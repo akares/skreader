@@ -39,6 +39,10 @@ See the [skread](cmd/skread/main.go) command implementation.
 go run github.com/akares/skreader/cmd/skread
 ```
 
+## License
+
+This project is licensed under the terms of the MIT license.
+
 ## Legal notices
 
 All product names, logos, and brands are property of their respective owners. All company, product and service names used in this package are for identification purposes only. Use of these names, logos, and brands does not imply endorsement.
