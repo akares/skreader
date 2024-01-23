@@ -1,6 +1,6 @@
 module github.com/akares/skreader
 
-go 1.21
+go 1.17
 
 require (
 	github.com/google/gousb v1.1.2
