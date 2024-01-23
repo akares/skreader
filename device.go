@@ -256,7 +256,7 @@ func (d *Device) State() (*DeviceState, error) {
 		ring   SkRingStatus
 	)
 
-	// It's time for a bit of bit shenanigans fun
+	// A bit of bit shenanigans fun
 
 	if (st1 & 0x10) != 0 {
 		status = SkDeviceStatusErrorHw
@@ -327,6 +327,7 @@ func (d *Device) SetMeasurementConfiguration() error {
 }
 
 // SetRemoteOn sets device to remote control mode.
+// In this mode, device is ready to receive remote commands.
 func (d *Device) SetRemoteOn() error {
 	_, err := d.execCommand(SkCommandSetRemoteOn, 0, 0)
 
@@ -334,6 +335,7 @@ func (d *Device) SetRemoteOn() error {
 }
 
 // SetRemoteOff sets device back to normal control mode.
+// In this mode, device is ready to be used manually.
 func (d *Device) SetRemoteOff() error {
 	_, err := d.execCommand(SkCommandSetRemoteOff, 0, 0)
 

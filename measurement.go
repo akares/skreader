@@ -6,11 +6,36 @@ import (
 	"math"
 )
 
+// Measurement represents a measurement data from SEKONIC device.
+// Data format is based on original C-7000 SDK from SEKONIC (distributed only as Windows DLL).
+type Measurement struct {
+	Tristimulus      TristimulusValue        // Tristimulus values in XYZ color space
+	ColorTemperature ColorTemperatureValue   // Correlated Color Temperature
+	Illuminance      IlluminanceValue        // Illuminance
+	CIE1931          CIE1931Value            // CIE 1931 (x, y, z) chromaticity coordinates
+	CIE1976          CIE1976Value            // CIE 1976 (u', v') chromaticity coordinates
+	DWL              DominantWavelengthValue // Dominant Wavelength
+	PPFD             DecimalValue            // Photosynthetic Photon Flux Density
+
+	ColorRenditionIndexes ColorRenditionIndexesValue // Color Rendition Indexes
+
+	SpectralData5nm [80]DecimalValue  // Spectral Data (5nm)
+	SpectralData1nm [400]DecimalValue // Spectral Data (1nm)
+	PeakWavelength  int               // Peak Wavelength (380...780nm)
+}
+
 const (
 	MeasurementDataValidSize = 2380 // tested on C-7000, C-800, C-700
 )
 
+// ValueRange indicates if a measurement result value is within/over/under limits.
 type ValueRange int
+
+const (
+	RangeOk ValueRange = iota
+	RangeUnder
+	RangeOver
+)
 
 func (r ValueRange) String() string {
 	switch r {
@@ -25,18 +50,15 @@ func (r ValueRange) String() string {
 	}
 }
 
-const (
-	RangeOk ValueRange = iota
-	RangeUnder
-	RangeOver
-)
-
+// DecimalValue represents a decimal value with string representation and validity indicator.
 type DecimalValue struct {
-	Val   float64
-	Str   string
-	Range ValueRange
+	Val   float64    // value
+	Str   string     // raw string representation
+	Range ValueRange // value validity indicator
 }
 
+// String returns string representation of the DecimalValue instance.
+// If the value is out of limits, the Range string representation is returned.
 func (v DecimalValue) String() string {
 	if v.Range != RangeOk {
 		return v.Range.String()
@@ -88,24 +110,6 @@ type DominantWavelengthValue struct {
 type ColorRenditionIndexesValue struct {
 	Ra DecimalValue
 	Ri [14]DecimalValue
-}
-
-// Measurement represents a measurement data from SEKONIC device.
-// Data format is based on original C-7000 SDK from SEKONIC (distributed only as Windows DLL).
-type Measurement struct {
-	Tristimulus      TristimulusValue        // Tristimulus values in XYZ color space
-	ColorTemperature ColorTemperatureValue   // Correlated Color Temperature
-	Illuminance      IlluminanceValue        // Illuminance
-	CIE1931          CIE1931Value            // CIE 1931 (x, y, z) chromaticity coordinates
-	CIE1976          CIE1976Value            // CIE 1976 (u', v') chromaticity coordinates
-	DWL              DominantWavelengthValue // Dominant Wavelength
-	PPFD             DecimalValue            // Photosynthetic Photon Flux Density
-
-	ColorRenditionIndexes ColorRenditionIndexesValue // Color Rendition Indexes
-
-	SpectralData5nm [80]DecimalValue  // Spectral Data (5nm)
-	SpectralData1nm [400]DecimalValue // Spectral Data (1nm)
-	PeakWavelength  int               // Peak Wavelength (380...780nm)
 }
 
 // Not implemented here but available for C-7000 FW > 25 extended measurement data:
@@ -215,12 +219,14 @@ func NewMeasurementFromBytes(data []byte) (*Measurement, error) {
 	return m, nil
 }
 
-// String returns limited a string representation of the Measurement instance.
+// String returns limited string representation of the Measurement instance.
+// Used mostly for debugging.
 func (m *Measurement) String() string {
 	return fmt.Sprintf("Lux=%s x=%s y=%s CCT=%s", m.Illuminance.Lux.Str, m.CIE1931.X.Str, m.CIE1931.Y.Str, m.ColorTemperature.Tcp.Str)
 }
 
-// Repr returns a full string representation of the Measurement instance.
+// Repr returns full string representation of the Measurement instance.
+// Used mostly for debugging.
 func (m *Measurement) Repr() string {
 	return fmt.Sprintf("%+v", *m)
 }

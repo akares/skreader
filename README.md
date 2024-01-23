@@ -2,7 +2,7 @@
 
 [![Test Go code](https://github.com/akares/skreader/actions/workflows/test.yml/badge.svg)](https://github.com/akares/skreader/actions/workflows/test.yml) [![Lint Go code](https://github.com/akares/skreader/actions/workflows/lint.yml/badge.svg)](https://github.com/akares/skreader/actions/workflows/lint.yml)
 
-Golang library and command line tool for SEKONIC spectrometers.
+Golang library and example command line tool for SEKONIC spectrometers remote control.
 
 Based on original C# SDK for Windows from SEKONIC.
 
@@ -22,7 +22,7 @@ Based on original C# SDK for Windows from SEKONIC.
 
 Default implementation uses [gousb](https://github.com/google/gousb) wrapper for the libusb library.
 
-You must have [libusb-1.0](https://github.com/libusb/libusb/wiki) be installed on your target system to be able to communicate with USB devices.
+You must have [libusb-1.0](https://github.com/libusb/libusb/wiki) installed on your target system to be able to communicate with USB devices.
 
 Installation for different platforms is covered in
 [gousb documentation](https://github.com/google/gousb/blob/master/README.md#dependencies).
@@ -33,10 +33,10 @@ _Alternatively_ you can provide custom USB implementation with [simple interface
 
 See the [skread](cmd/skread/main.go) command implementation.
 
-## Command line usage
+## Run example
 
 ```
-go run github.com/akares/skreader/cmd/skread
+go run ./cmd/skread
 ```
 
 ## License
