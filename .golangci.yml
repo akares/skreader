@@ -1,0 +1,193 @@
+run:
+  skip-dirs:
+    - (^|/)generated($|/)
+
+linters-settings:
+  funlen:
+    lines: 100
+    statements: 50
+
+  gci:
+    local-prefixes: github.com/golangci/golangci-lint
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+    settings:
+      hugeParam:
+        sizeThreshold: 512
+
+  gocyclo:
+    min-complexity: 20
+
+  golint:
+    min-confidence: 0
+
+  gomnd:
+    settings:
+      mnd:
+        # don't include the "operation" and "assign"
+        checks: argument,case,condition,return
+        ignored-numbers: 0,1,2,10,100
+        ignored-functions: math.*,strconv.*
+
+  govet:
+    check-shadowing: true
+    settings:
+      printf:
+        funcs:
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+
+  maligned:
+    suggest-new: true
+
+  nolintlint:
+    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+  prealloc:
+    # XXX: we don't recommend using this linter before doing performance profiling.
+    # For most programs usage of prealloc will be a premature optimization.
+    # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them.
+    # True by default.
+    simple: true
+    range-loops: true # Report preallocation suggestions on range loops, true by default
+    for-loops: false # Report preallocation suggestions on for loops, false by default
+
+  revive:
+    # see https://github.com/mgechev/revive#available-rules for details.
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: blank-imports
+        severity: warning
+      - name: context-as-argument
+        severity: warning
+      - name: context-keys-type
+        severity: warning
+      - name: dot-imports
+        severity: warning
+      - name: error-return
+        severity: warning
+      - name: error-strings
+        severity: warning
+      - name: error-naming
+        severity: warning
+      - name: if-return
+        severity: warning
+      - name: increment-decrement
+        severity: warning
+      - name: var-naming
+        severity: warning
+      - name: var-declaration
+        severity: warning
+      - name: package-comments
+        severity: warning
+      - name: range
+        severity: warning
+      - name: receiver-naming
+        severity: warning
+      - name: time-naming
+        severity: warning
+      - name: unexported-return
+        severity: warning
+      - name: indent-error-flow
+        severity: warning
+      - name: errorf
+        severity: warning
+      - name: empty-block
+        severity: warning
+      - name: superfluous-else
+        severity: warning
+      - name: unused-parameter
+        severity: warning
+      - name: unreachable-code
+        severity: warning
+      - name: redefines-builtin-id
+        severity: warning
+
+  staticcheck:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.19"
+
+  stylecheck:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.19"
+
+  unparam:
+    # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
+    # with golangci-lint call it on a directory with the changed file.
+    check-exported: false
+
+  unused:
+    # Select the Go version to target. The default is '1.13'.
+    go: "1.19"
+
+  whitespace:
+    multi-if: false # Enforces newlines (or comments) after every multi-line if statement
+    multi-func: false # Enforces newlines (or comments) after every multi-line function signature
+
+linters:
+  disable-all: true
+  enable:
+    # default
+    # - deadcode # deprecated (since v1.49.0). Replaced by unused
+    - errcheck
+    - megacheck
+    - ineffassign
+    # - structcheck # structcheck is disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+    - typecheck
+    # - varcheck # deprecated (since v1.49.0). Replaced by unused
+    - exhaustruct
+
+    # extra
+    - bodyclose
+    - exportloopref
+    - funlen
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - govet
+    - nakedret
+    - nilerr
+    - nlreturn
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - revive
+    # - rowserrcheck # rowserrcheck is disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+    - staticcheck
+    - stylecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gomnd

@@ -1,0 +1,49 @@
+name: Test Go code
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    if: github.event.pull_request.draft == false
+    name: test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+          check-latest: true
+          cache: false
+
+      - name: Install system dependencies
+        run: sudo apt update && sudo apt install libusb-1.0-0-dev
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        run: go test ./... -coverprofile=./coverage.out -covermode=atomic -coverpkg=./...
+
+      - name: Generate tests coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./.testcoverage.yml
+
+          ## Create a coverage badge and automatically commit it to a separate branch.
+          ## When token is not specified (value '') this feature is turned off
+          ## in this example badge is created and committed only for main brach.
+          # git-token: ${{ github.ref_name == 'main' && secrets.GITHUB_TOKEN || '' }}
+          ## Name of branch where badges are stored. Ideally this should be orphan branch.
+          # git-branch: badges

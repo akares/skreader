@@ -1,0 +1,55 @@
+name: Lint Go code
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    if: github.event.pull_request.draft == false
+    name: lint
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+          check-latest: true
+          cache: false
+
+      - name: Install system dependencies
+        run: sudo apt update && sudo apt install libusb-1.0-0-dev
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+          version: v1.55.1
+
+          # Optional: working directory, useful for monorepos
+          # working-directory: ./
+
+          # Optional: golangci-lint command line arguments.
+          args: --config=.golangci.yml --timeout=3m
+
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          only-new-issues: true
+
+          # Optional: if set to true then the action don't cache or restore ~/go/pkg.
+          # skip-pkg-cache: true
+
+          # Optional: if set to true then the action don't cache or restore ~/.cache/go-build.
+          # skip-build-cache: true
