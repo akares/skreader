@@ -3,7 +3,7 @@ module github.com/akares/skreader
 go 1.17
 
 require (
-	github.com/google/gousb v1.1.2
+	github.com/google/gousb v1.1.3
 	github.com/stretchr/testify v1.8.4
 )
 
