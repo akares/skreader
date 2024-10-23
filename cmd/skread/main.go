@@ -40,7 +40,7 @@ func main() {
 	fmt.Printf("Meas: %s\n", meas.Repr())
 	fmt.Printf("Meas: %s\n", meas.String())
 	fmt.Printf(
-		"Lux=%s x=%s y=%s CCT=%s",
+		"Lux=%s x=%s y=%s CCT=%s\n",
 		meas.Illuminance.Lux.Str,
 		meas.CIE1931.X.Str,
 		meas.CIE1931.Y.Str,

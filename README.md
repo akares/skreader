@@ -6,6 +6,8 @@ Golang library and example command line tool for SEKONIC spectrometers remote co
 
 Based on original C# SDK for Windows from SEKONIC.
 
+<img src="doc/Sekonic-C-7000.jpg" width="640" alt="Sekonic C-7000" />
+
 ## Supported (tested) models
 
 -   Sekonic C-700
