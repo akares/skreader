@@ -19,8 +19,8 @@ type Measurement struct {
 
 	ColorRenditionIndexes ColorRenditionIndexesValue // Color Rendition Indexes
 
-	SpectralData5nm [80]DecimalValue  // Spectral Data (5nm)
-	SpectralData1nm [400]DecimalValue // Spectral Data (1nm)
+	SpectralData5nm [81]DecimalValue  // Spectral Data (5nm)
+	SpectralData1nm [401]DecimalValue // Spectral Data (1nm)
 	PeakWavelength  int               // Peak Wavelength (380...780nm)
 }
 
@@ -109,7 +109,7 @@ type DominantWavelengthValue struct {
 // ColorRenditionIndexesValue represents a color rendition indexes Ra and Ri.
 type ColorRenditionIndexesValue struct {
 	Ra DecimalValue
-	Ri [14]DecimalValue
+	Ri [15]DecimalValue
 }
 
 // Not implemented here but available for C-7000 FW > 25 extended measurement data:
@@ -130,16 +130,24 @@ func NewMeasurementFromBytes(data []byte) (*Measurement, error) {
 
 	// Parse binary data to struct
 
+
+	//ColorTemperature
 	m.ColorTemperature.Tcp = toDecimalValue(parseFloat32(data, 50), 1563, 100000, 0)
 	m.ColorTemperature.DeltaUv = toDecimalValue(parseFloat32(data, 55), -0.1, 0.1, 4)
 	if m.ColorTemperature.DeltaUv.Range != RangeOk { // limit the CCT value (C-800 returns Tcp=50000 value instead of "Over" as C-7000 does)
 		m.ColorTemperature.Tcp.Range = m.ColorTemperature.DeltaUv.Range
 	}
+
+	//Illuminance
 	m.Illuminance.Lux = parseLuxToDecimalValue(data, 271, 100, 200000)
 	m.Illuminance.FootCandle = parseLuxToDecimalValue(data, 276, 0.093000002205371857, 18580.607421875)
+
+	//Tristimulus
 	m.Tristimulus.X = toDecimalValue(parseFloat64(data, 281), 0, 1000000, 4)
 	m.Tristimulus.Y = toDecimalValue(parseFloat64(data, 290), 0, 1000000, 4)
 	m.Tristimulus.Z = toDecimalValue(parseFloat64(data, 299), 0, 1000000, 4)
+
+	//CIE1931
 	m.CIE1931.X = toDecimalValue(parseFloat32(data, 308), 0, 1, 4)
 	m.CIE1931.Y = toDecimalValue(parseFloat32(data, 313), 0, 1, 4)
 	if m.CIE1931.X.Range != RangeOk {
@@ -149,14 +157,22 @@ func NewMeasurementFromBytes(data []byte) (*Measurement, error) {
 	} else {
 		m.CIE1931.Z = toDecimalValue(1.0-m.CIE1931.X.Val-m.CIE1931.Y.Val, 0, 1, 4)
 	}
+
+	//CIE1976
 	m.CIE1976.Ud = toDecimalValue(parseFloat32(data, 328), 0, 1, 4)
 	m.CIE1976.Vd = toDecimalValue(parseFloat32(data, 333), 0, 1, 4)
+
+	//Dominant wavelength
 	m.DWL.Wavelength = toDecimalValue(parseFloat32(data, 338), -780, 780, 0)
 	m.DWL.ExcitationPurity = toDecimalValue(parseFloat32(data, 343), 0, 100, 1)
+
+	//CRI
 	m.ColorRenditionIndexes.Ra = toDecimalValue(parseFloat32(data, 348), -100, 100, 1)
 	for i := range m.ColorRenditionIndexes.Ri {
 		m.ColorRenditionIndexes.Ri[i] = toDecimalValue(parseFloat32(data, 353+i*5), -100, 100, 1)
 	}
+
+	//Boundaries check
 	if m.Illuminance.Lux.Range == RangeUnder {
 		for i := range m.SpectralData5nm {
 			m.SpectralData5nm[i].Range = RangeUnder

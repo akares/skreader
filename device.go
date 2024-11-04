@@ -144,6 +144,8 @@ func (d *Device) Measure() (*Measurement, error) {
 	return d.MeasurementResult()
 }
 
+
+
 // WaitReady waits for device to be ready for next measurement.
 // It polls device state every step duration until idle status is reached or timeout duration is reached.
 // If device state is not valid for measurement, error is returned.

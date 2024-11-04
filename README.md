@@ -12,6 +12,7 @@ Based on original C# SDK for Windows from SEKONIC.
 
 -   Sekonic C-700
 -   Sekonic C-800
+-   Sekonic C-800-U (US Version. Basically the same as C-800)
 -   Sekonic C-7000 (supports extended measurement configuration: FOV and Exposure Time)
 
 ## Supported (tested) platforms
@@ -19,6 +20,10 @@ Based on original C# SDK for Windows from SEKONIC.
 -   Darwin
 -   Windows
 -   Linux
+
+## Known limitations
+
+TM-30 and TCLI only works on C-7000 firmware accordingly to SEKONIC SDK manual page 11?
 
 ## Dependencies
 
@@ -35,10 +40,29 @@ _Alternatively_ you can provide custom USB implementation with [simple interface
 
 See the [skread](cmd/skread/main.go) command implementation.
 
+## MacOS install example
+
+
+Use homebrew to install go.
+go on MacOS will take care of dependencies when running this script for the first time.
+
+```
+homebrew install go
+```
+
+Connect your device.
+Then simply run example below.
+
+
+
 ## Run example
 
 ```
-go run ./cmd/skread
+go run ./cmd/skread --run --all
+```
+
+```
+go run ./cmd/skread --help
 ```
 
 ## License
