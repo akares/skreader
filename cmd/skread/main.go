@@ -1,174 +1,283 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"log"
 	"os"
-	"strconv"
 
 	"github.com/akares/skreader"
+	"github.com/urfave/cli/v2"
 )
 
-//nolint:funlen,gocyclo
-func main() {
-	// Available commands
-	help := flag.Bool("help", false, "Shows usage information")
-	run := flag.Bool("run", false, "Runs a normal measurement and outputs the selected data")
+const (
+	name        = "skreader"
+	version     = "0.2.0"
+	description = "command line tool for SEKONIC spectrometers remote control"
+)
 
-	// Data to show
-	showInfo := flag.Bool("info", false, "Shows info about the connected device")
-	showAll := flag.Bool("all", false, "Shows all data from the connected device")
-	showIlluminance := flag.Bool("Illuminance", false, "Shows illuminance data")
-	showColorTemperature := flag.Bool("ColorTemperature", false, "Shows ColorTemperature data")
-	showTristimulus := flag.Bool("Tristimulus", false, "Shows Tristimulus data")
-	showCIE1931 := flag.Bool("CIE1931", false, "Shows CIE1931 data")
-	showCIE1976 := flag.Bool("CIE1976", false, "Shows CIE1976 data")
-	showDWL := flag.Bool("DWL", false, "Shows DWL data")
-	show := flag.Bool("CRI", false, "Shows CRI data")
-	showSpectra1nm := flag.Bool("Spectra1nm", false, "Shows Spectra1nm data")
-	showSpectra5nm := flag.Bool("Spectra5nm", false, "Shows Spectra5nm data")
+func skConnect() (*skreader.Device, error) {
+	sk, err := skreader.NewDeviceWithAdapter(&skreader.GousbAdapter{})
+	if err != nil {
+		return nil, err
+	}
+
+	return sk, nil
+}
+
+func infoCmd(_ *cli.Context) error {
+	sk, err := skConnect()
+	if err != nil {
+		return err
+	}
+	defer sk.Close()
+
+	st, err := sk.State()
+	if err != nil {
+		return err
+	}
+
+	model, _ := sk.ModelName()
+	fw, _ := sk.FirmwareVersion()
+
+	fmt.Println("Device:", sk.String())
+	fmt.Println("Model:", model)
+	fmt.Println("Firmware:", fw)
+	fmt.Println("Status:", st.Status)
+	fmt.Println("Remote:", st.Remote)
+	fmt.Println("Button:", st.Button, st.Ring)
+	fmt.Println("Ring:", st.Ring)
+
+	return nil
+}
+
+//nolint:gocyclo,funlen
+func measureCmd(c *cli.Context) error {
+	sk, err := skConnect()
+	if err != nil {
+		return err
+	}
+	defer sk.Close()
+
+	meas, err := sk.Measure()
+	if err != nil {
+		panic(err)
+	}
+
+	verbose := c.Bool("verbose")
+
+	showIlluminance := c.Bool("illuminance") || c.Bool("all") || c.Bool("simple")
+	showColorTemperature := c.Bool("color-temperature") || c.Bool("all") || c.Bool("simple")
+	showTristimulus := c.Bool("tristimulus") || c.Bool("all") || c.Bool("simple")
+	showCIE1931 := c.Bool("cie1931") || c.Bool("all") || c.Bool("simple")
+	showCIE1976 := c.Bool("cie1976") || c.Bool("all") || c.Bool("simple")
+	showDWL := c.Bool("dwl") || c.Bool("all") || c.Bool("simple")
+
+	showCRI := c.Bool("cri") || c.Bool("all")
+	showSpectra1nm := c.Bool("spectra1nm") || c.Bool("all")
+	showSpectra5nm := c.Bool("spectra5nm") || c.Bool("all")
 
 	// Shown by default if no other flag is set
-	showLDi := flag.Bool("LDi", false, "Shows the most interesting data for LDs")
+	showLDi := c.Bool("ldi") || c.Bool("all") || (!showIlluminance && !showColorTemperature && !showTristimulus && !showCIE1931 && !showCIE1976 && !showDWL && !showCRI && !showSpectra1nm && !showSpectra5nm)
 
-	flag.Parse()
-
-	if *help || len(os.Args) == 1 {
-		fmt.Println("Usage: skreader [options]")
-		fmt.Println("Example: skreader -run -all")
-		fmt.Println("\nOptions:")
-		flag.PrintDefaults()
-
-		os.Exit(0)
+	if showIlluminance {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("Illuminance:")
+		}
+		fmt.Println("LUX:", meas.Illuminance.Lux.Str)
+		fmt.Println("Fc:", meas.Illuminance.FootCandle)
 	}
 
-	if *run && len(os.Args) == 2 {
-		*showLDi = true
+	if showColorTemperature {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("ColorTemperature:")
+		}
+		fmt.Println("CCT:", meas.ColorTemperature.Tcp)
+		fmt.Println("CCT DeltaUv:", meas.ColorTemperature.DeltaUv)
 	}
 
-	if *showAll {
-		*showInfo = true
-		*showIlluminance = true
-		*showColorTemperature = true
-		*showTristimulus = true
-		*showCIE1931 = true
-		*showCIE1976 = true
-		*showDWL = true
-		*show = true
-		*showSpectra1nm = true
-		*showSpectra5nm = true
+	if showTristimulus {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("Tristimulus:")
+		}
+		fmt.Println("X:", meas.Tristimulus.X)
+		fmt.Println("Y:", meas.Tristimulus.Y)
+		fmt.Println("Z:", meas.Tristimulus.Z)
 	}
 
-	if *run {
-		// Connect to SEKONIC device.
-		sk, err := skreader.NewDeviceWithAdapter(&skreader.GousbAdapter{})
-		if err != nil {
-			panic(err)
+	if showCIE1931 {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("CIE1931:")
 		}
-		defer sk.Close()
+		fmt.Println("X:", meas.CIE1931.X)
+		fmt.Println("Y:", meas.CIE1931.Y)
+	}
 
-		// Get some basic info of the device.
-		model, _ := sk.ModelName()
-		fw, _ := sk.FirmwareVersion()
-
-		// Get the current operational mode, knobs and buttons states of the device.
-		st, err := sk.State()
-		if err != nil {
-			panic(err)
+	if showCIE1976 {
+		if verbose {
+			fmt.Println("CIE1976:")
+			fmt.Println("------------")
 		}
+		fmt.Println("Ud:", meas.CIE1976.Ud)
+		fmt.Println("Vd:", meas.CIE1976.Vd)
+	}
 
-		// Print the device info
-		if *showInfo {
-			fmt.Println(strconv.Quote(sk.String()))
-			fmt.Println("Model:", strconv.Quote(model))
-			fmt.Println("Firmware:", fw)
-			fmt.Printf("State: %+v\n", st)
+	if showDWL {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("DominantWavelength:")
 		}
+		fmt.Println("DominantWavelength:", meas.DWL.Wavelength)
+		fmt.Println("ExcitationPurity:", meas.DWL.ExcitationPurity)
+	}
 
-		// Run one measurement.
-		meas, err := sk.Measure()
-		if err != nil {
-			panic(err)
+	if showCRI {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("CRI:")
 		}
+		fmt.Println("RA:", meas.ColorRenditionIndexes.Ra)
+		for i := range meas.ColorRenditionIndexes.Ri {
+			fmt.Printf("R%d: %s\n", i+1, meas.ColorRenditionIndexes.Ri[i])
+		}
+	}
 
-		if *showIlluminance {
-			fmt.Printf("------------\n")
-			fmt.Printf("Illuminance:\n")
-			fmt.Printf("LUX: %s\n", meas.Illuminance.Lux.Str)
-			fmt.Printf("Fc: %s\n", meas.Illuminance.FootCandle)
+	if showSpectra1nm {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("SpectralData 1nm:")
 		}
+		for i := range meas.SpectralData1nm {
+			wavelength := 380 + i
+			fmt.Printf("%d,%f\n", wavelength, meas.SpectralData1nm[i].Val)
+		}
+	}
 
-		if *showColorTemperature {
-			fmt.Printf("------------\n")
-			fmt.Printf("ColorTemperature:\n")
-			fmt.Printf("CCT: %s\n", meas.ColorTemperature.Tcp)
-			fmt.Printf("CCT DeltaUv: %s\n", meas.ColorTemperature.DeltaUv)
+	if showSpectra5nm {
+		if verbose {
+			fmt.Println("------------")
+			fmt.Println("SpectralData 5nm:")
 		}
+		for i := range meas.SpectralData5nm {
+			wavelength := 380 + (i * 5)
+			fmt.Printf("%d,%f\n", wavelength, meas.SpectralData5nm[i].Val)
+		}
+	}
 
-		if *showTristimulus {
-			fmt.Printf("------------\n")
-			fmt.Printf("Tristimulus:\n")
-			fmt.Printf("X: %s\n", meas.Tristimulus.X)
-			fmt.Printf("Y: %s\n", meas.Tristimulus.Y)
-			fmt.Printf("Z: %s\n", meas.Tristimulus.Z)
+	if showLDi {
+		if verbose {
+			fmt.Println("------------")
 		}
+		fmt.Println("LUX:", meas.Illuminance.Lux.Str)
+		fmt.Println("CCT:", meas.ColorTemperature.Tcp)
+		fmt.Println("CCT DeltaUv:", meas.ColorTemperature.DeltaUv)
+		fmt.Println("RA:", meas.ColorRenditionIndexes.Ra)
+		fmt.Println("R9:", meas.ColorRenditionIndexes.Ri[8])
+	}
 
-		if *showCIE1931 {
-			fmt.Printf("------------\n")
-			fmt.Printf("CIE1931:\n")
-			fmt.Printf("X: %s\n", meas.CIE1931.X)
-			fmt.Printf("Y: %s\n", meas.CIE1931.Y)
-		}
+	return nil
+}
 
-		if *showCIE1976 {
-			fmt.Printf("------------\n")
-			fmt.Printf("CIE1976:\n")
-			fmt.Printf("Ud: %s\n", meas.CIE1976.Ud)
-			fmt.Printf("Vd: %s\n", meas.CIE1976.Vd)
-		}
+//nolint:exhaustruct
+func main() {
+	app := &cli.App{
+		Name:                   name,
+		Version:                version,
+		Usage:                  description,
+		Suggest:                true,
+		EnableBashCompletion:   true,
+		UseShortOptionHandling: true,
+		Commands: []*cli.Command{
+			{
+				Name:   "info",
+				Usage:  "Shows info about the connected device.",
+				Action: infoCmd,
+			},
+			{
+				Name:   "measure",
+				Usage:  "Runs one measurement and outputs the selected data.",
+				Action: measureCmd,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "ldi",
+						Aliases: []string{"l"},
+						Usage:   "include the most interesting data for LDs",
+					},
+					&cli.BoolFlag{
+						Name:    "all",
+						Aliases: []string{"a"},
+						Usage:   "include all measurement data",
+					},
+					&cli.BoolFlag{
+						Name:    "simple",
+						Aliases: []string{"s"},
+						Usage:   "include all simple measurement data (excluding spectra and CRI)",
+					},
+					&cli.BoolFlag{
+						Name:    "illuminance",
+						Aliases: []string{"ill", "i"},
+						Usage:   "include illuminance values in Lux and foot-candle units",
+					},
+					&cli.BoolFlag{
+						Name:    "color-temperature",
+						Aliases: []string{"cct", "c"},
+						Usage:   "include color temperature values in Kelvin and delta-uv units",
+					},
+					&cli.BoolFlag{
+						Name:    "tristimulus",
+						Aliases: []string{"tri", "t"},
+						Usage:   "include tristimulus values in XYZ color space",
+					},
+					&cli.BoolFlag{
+						Name:    "cie1931",
+						Aliases: []string{"xy", "x"},
+						Usage:   "include CIE1931 (x, y) chromaticity coordinates",
+					},
+					&cli.BoolFlag{
+						Name:    "cie1976",
+						Aliases: []string{"uv", "u"},
+						Usage:   "include CIE1976 (u', v') chromaticity coordinates",
+					},
+					&cli.BoolFlag{
+						Name:    "dwl",
+						Aliases: []string{"d"},
+						Usage:   "include dominant wavelength value",
+					},
+					&cli.BoolFlag{
+						Name:    "cri",
+						Aliases: []string{"r"},
+						Usage:   "include CRI (Ra, Ri) values",
+					},
+					&cli.BoolFlag{
+						Name:    "spectra1nm",
+						Aliases: []string{"1mm", "1"},
+						Usage:   "include spectral data for 1nm wavelength",
+					},
+					&cli.BoolFlag{
+						Name:    "spectra5nm",
+						Aliases: []string{"5mm", "5"},
+						Usage:   "include spectral data for 5nm wavelength",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "print more messages",
+					},
+				},
+			},
+		},
+	}
 
-		if *showDWL {
-			fmt.Printf("------------\n")
-			fmt.Printf("DominantWavelength:\n")
-			fmt.Printf("Wavelength: %s\n", meas.DWL.Wavelength)
-			fmt.Printf("ExcitationPurity: %s\n", meas.DWL.ExcitationPurity)
-		}
+	cli.VersionFlag = &cli.BoolFlag{
+		Name:    "version",
+		Aliases: []string{"V"},
+		Usage:   "print only the version",
+	}
 
-		if *show {
-			fmt.Printf("------------\n")
-			fmt.Printf("CRI:\n")
-			fmt.Printf("RA: %s\n", meas.ColorRenditionIndexes.Ra)
-			for i := range meas.ColorRenditionIndexes.Ri {
-				fmt.Printf("R%d: %s\n", i+1, meas.ColorRenditionIndexes.Ri[i])
-			}
-		}
-
-		if *showSpectra1nm {
-			fmt.Printf("------------\n")
-			fmt.Printf("SpectralData 1nm:\n")
-			for i := range meas.SpectralData1nm {
-				// TODO: Missing one datapoint?
-				wavelength := 380 + i
-				fmt.Printf("%d,%f\n", wavelength, meas.SpectralData1nm[i].Val)
-			}
-		}
-
-		if *showSpectra5nm {
-			fmt.Printf("------------\n")
-			fmt.Printf("SpectralData 5nm:\n")
-			for i := range meas.SpectralData5nm {
-				// TODO: Missing one datapoint?
-				wavelength := 380 + (i * 5)
-				fmt.Printf("%d,%f\n", wavelength, meas.SpectralData5nm[i].Val)
-			}
-		}
-
-		if *showLDi {
-			fmt.Printf("LUX: %s\n", meas.Illuminance.Lux.Str)
-			fmt.Printf("CCT: %s\n", meas.ColorTemperature.Tcp)
-			fmt.Printf("CCT DeltaUv: %s\n", meas.ColorTemperature.DeltaUv)
-			fmt.Printf("RA: %s\n", meas.ColorRenditionIndexes.Ra)
-			fmt.Printf("R9: %s\n", meas.ColorRenditionIndexes.Ri[8])
-		}
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
 }

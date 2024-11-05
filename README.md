@@ -59,14 +59,17 @@ homebrew install go
 
 1. Connect your device.
 
-2. Run commands below:
+2. Run one measurement:
 
 ```
-go run ./cmd/skread -run -all
+go run ./cmd/skread measure -s
 ```
 
+3. Get info about other available options:
+
 ```
-go run ./cmd/skread -help
+go run ./cmd/skread --help
+go run ./cmd/skread measure --help
 ```
 
 _Go will take care of dependencies when running this script for the first time._
@@ -82,7 +85,7 @@ _This will create binary executable file named `skread` in the same directory._
 Run the executable:
 
 ```
-./skread -help
+./skread --help
 ```
 
 _Now you can run this file on any other machine with the same OS and architecture as the one you built it with. But remeber about USB driver dependency mentioned earlier, it is needed for program to run._
@@ -115,7 +118,7 @@ curl -OL https://raw.githubusercontent.com/akares/skreader/main/cmd/skread/main.
 4. Run:
 
 ```
-go run . -help
+go run . --help
 ```
 
 5. _Modify the program according to your needs._
@@ -124,7 +127,7 @@ go run . -help
 
 ```
 go build -o my_skreader ./main.go
-./my_skreader -help
+./my_skreader --help
 ```
 
 _You will still need to take care of the USB driver dependency mentioned earlier._
