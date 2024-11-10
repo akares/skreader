@@ -15,8 +15,17 @@ const (
 	description = "command line tool for SEKONIC spectrometers remote control"
 )
 
-func skConnect() (*skreader.Device, error) {
-	sk, err := skreader.NewDeviceWithAdapter(&skreader.GousbAdapter{})
+func skConnect(isFakeDevice bool) (*skreader.Device, error) {
+	var adapter skreader.UsbAdapter
+
+	//nolint:exhaustruct
+	if isFakeDevice {
+		adapter = &skreader.FakeusbAdapter{}
+	} else {
+		adapter = &skreader.GousbAdapter{}
+	}
+
+	sk, err := skreader.NewDeviceWithAdapter(adapter)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +33,16 @@ func skConnect() (*skreader.Device, error) {
 	return sk, nil
 }
 
-func infoCmd(_ *cli.Context) error {
-	sk, err := skConnect()
+func infoCmd(c *cli.Context) error {
+	isFakeDevice := c.Bool("fake-device")
+
+	if isFakeDevice {
+		fmt.Println("Fake device")
+
+		return nil
+	}
+
+	sk, err := skConnect(isFakeDevice)
 	if err != nil {
 		return err
 	}
@@ -52,13 +69,21 @@ func infoCmd(_ *cli.Context) error {
 
 //nolint:gocyclo,funlen
 func measureCmd(c *cli.Context) error {
-	sk, err := skConnect()
+	isFakeDevice := c.Bool("fake-device")
+
+	sk, err := skConnect(isFakeDevice)
 	if err != nil {
 		return err
 	}
 	defer sk.Close()
 
-	meas, err := sk.Measure()
+	var meas *skreader.Measurement
+
+	if isFakeDevice {
+		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+	} else {
+		meas, err = sk.Measure()
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -267,6 +292,13 @@ func main() {
 						Usage:   "print more messages",
 					},
 				},
+			},
+		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "fake-device",
+				Aliases: []string{"fake", "f"},
+				Usage:   "use fake device for testing",
 			},
 		},
 	}
