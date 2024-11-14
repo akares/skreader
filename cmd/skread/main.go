@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
+
+	"encoding/json"
 
 	"github.com/akares/skreader"
 	"github.com/urfave/cli/v2"
@@ -11,9 +14,20 @@ import (
 
 const (
 	name        = "skreader"
-	version     = "0.2.0"
+	version     = "0.3.0"
 	description = "command line tool for SEKONIC spectrometers remote control"
 )
+
+type JSONResponse struct {
+	Device       string                     `json:"Device"`
+	Model        string                     `json:"Model"`
+	Firmware     string                     `json:"Firmware"`
+	Status       string                     `json:"Status"`
+	Remote       string                     `json:"Remote"`
+	Button       string                     `json:"Button"`
+	Ring         string                     `json:"Ring"`
+	Measurements []skreader.MeasurementJSON `json:"Measurements"`
+}
 
 func skConnect() (*skreader.Device, error) {
 	sk, err := skreader.NewDeviceWithAdapter(&skreader.GousbAdapter{})
@@ -56,13 +70,26 @@ func infoCmd(c *cli.Context) error {
 	return nil
 }
 
-//nolint:gocyclo,funlen
-func measureCmd(c *cli.Context) error {
+func jsonCmd(c *cli.Context) error {
 	var meas *skreader.Measurement
 	var err error
 
+	var response JSONResponse
 	if c.Bool("fake-device") {
 		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return err
+		}
+		response = JSONResponse{
+			Device:       "fake-device",
+			Model:        "n/a",
+			Firmware:     "n/a",
+			Status:       "n/a",
+			Remote:       "n/a",
+			Button:       "n/a",
+			Ring:         "n/a",
+			Measurements: []skreader.MeasurementJSON{}, // populated later
+		}
 	} else {
 		var sk *skreader.Device
 		sk, err = skConnect()
@@ -72,9 +99,72 @@ func measureCmd(c *cli.Context) error {
 		defer sk.Close()
 
 		meas, err = sk.Measure()
+		if err != nil {
+			return err
+		}
+
+		var st *skreader.DeviceState
+		st, err = sk.State()
+		if err != nil {
+			return err
+		}
+
+		model, _ := sk.ModelName()
+		fw, _ := sk.FirmwareVersion()
+
+		response = JSONResponse{
+			Device:       sk.String(),
+			Model:        model,
+			Firmware:     fmt.Sprintf("%v", fw),
+			Status:       fmt.Sprintf("%v", st.Status),
+			Remote:       fmt.Sprintf("%v", st.Remote),
+			Button:       fmt.Sprintf("%v", st.Button),
+			Ring:         fmt.Sprintf("%v", st.Ring),
+			Measurements: []skreader.MeasurementJSON{}, // populated later
+		}
 	}
+
+	measName := c.String("name")
+	measNote := c.String("note")
+	measTime := time.Now()
+
+	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
+	response.Measurements = append(response.Measurements, measJSON)
+
+	file, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		panic(err)
+		fmt.Println("Error marshaling JSON:", err)
+
+		return err
+	}
+
+	fmt.Println(string(file))
+
+	return nil
+}
+
+//nolint:gocyclo,funlen
+func measureCmd(c *cli.Context) error {
+	var meas *skreader.Measurement
+	var err error
+
+	if c.Bool("fake-device") {
+		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return err
+		}
+	} else {
+		var sk *skreader.Device
+		sk, err = skConnect()
+		if err != nil {
+			return err
+		}
+		defer sk.Close()
+
+		meas, err = sk.Measure()
+		if err != nil {
+			return err
+		}
 	}
 
 	verbose := c.Bool("verbose")
@@ -209,6 +299,25 @@ func main() {
 				Name:   "info",
 				Usage:  "Shows info about the connected device.",
 				Action: infoCmd,
+			},
+			{
+				Name:   "json",
+				Usage:  "outputs all data as json",
+				Action: jsonCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"na"},
+						Usage:    "Measurement name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "note",
+						Aliases:  []string{"no"},
+						Usage:    "Measurement note",
+						Required: true,
+					},
+				},
 			},
 			{
 				Name:   "measure",
