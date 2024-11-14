@@ -7,17 +7,17 @@ import "time"
 // MeasurementJSON is a struct that represents a JSON object that can be used to
 // serialize a Measurement object.
 type MeasurementJSON struct {
-	Name             string                `json:"Name"`
-	Note             string                `json:"Note"`
-	Timestamp        int64                 `json:"Timestamp"`
-	Illuminance      IlluminanceJSON       `json:"Illuminance"`
-	ColorTemperature ColorTemperatureJSON  `json:"ColorTemperature"`
-	Tristimulus      TristimulusJSON       `json:"Tristimulus"`
-	CIE1931          CIE1931JSON           `json:"CIE1931"`
-	CIE1976          CIE1976JSON           `json:"CIE1976"`
-	DWL              DWLJSON               `json:"DWL"`
-	CRI              CRIJSON               `json:"CRI"`
-	WaveLengths      []WaveLengthGroupJSON `json:"WaveLengths"`
+	Name             string               `json:"Name"`
+	Note             string               `json:"Note"`
+	Timestamp        int64                `json:"Timestamp"`
+	Illuminance      IlluminanceJSON      `json:"Illuminance"`
+	ColorTemperature ColorTemperatureJSON `json:"ColorTemperature"`
+	Tristimulus      TristimulusJSON      `json:"Tristimulus"`
+	CIE1931          CIE1931JSON          `json:"CIE1931"`
+	CIE1976          CIE1976JSON          `json:"CIE1976"`
+	DWL              DWLJSON              `json:"DWL"`
+	CRI              CRIJSON              `json:"CRI"`
+	SpectralData     []SpectralDataJSON   `json:"SpectralData"`
 }
 
 type IlluminanceJSON struct {
@@ -61,14 +61,16 @@ type CRIRiJSON struct {
 	Value float64 `json:"value"`
 }
 
-type WaveLengthGroupJSON struct {
-	Type  string     `json:"type"`
-	Waves []WaveJSON `json:"waves"`
+type SpectralDataJSON struct {
+	Range  SpectralDataRangeJSON `json:"Range"`
+	Values []float64             `json:"Values"`
 }
 
-type WaveJSON struct {
-	Nm    int     `json:"Nm"`
-	Value float64 `json:"value"`
+type SpectralDataRangeJSON struct {
+	Type    string `json:"Type"`
+	StartNm int    `json:"StartNm"`
+	EndNm   int    `json:"EndNm"`
+	StepNm  int    `json:"StepNm"`
 }
 
 func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime time.Time) MeasurementJSON {
@@ -103,12 +105,9 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 		},
 		CRI: CRIJSON{
 			RA: meas.ColorRenditionIndexes.Ra.Val,
-			Ri: []CRIRiJSON{},
+			Ri: []CRIRiJSON{}, // populated later
 		},
-		WaveLengths: []WaveLengthGroupJSON{
-			{Type: "1nm", Waves: []WaveJSON{}},
-			{Type: "5nm", Waves: []WaveJSON{}},
-		},
+		SpectralData: []SpectralDataJSON{}, // populated later
 	}
 
 	// Populate Ri
@@ -120,20 +119,34 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 	}
 
 	// Populate 1nm
+	spectralData1nm := SpectralDataJSON{
+		Range: SpectralDataRangeJSON{
+			Type:    "1nm",
+			StartNm: 380,
+			EndNm:   780,
+			StepNm:  1,
+		},
+		Values: make([]float64, len(meas.SpectralData1nm)),
+	}
 	for i, val := range &meas.SpectralData1nm {
-		res.WaveLengths[0].Waves = append(res.WaveLengths[0].Waves, WaveJSON{
-			Nm:    380 + i,
-			Value: val.Val,
-		})
+		spectralData1nm.Values[i] = val.Val
 	}
 
 	// Populate 5nm
-	for i, val := range &meas.SpectralData5nm {
-		res.WaveLengths[1].Waves = append(res.WaveLengths[1].Waves, WaveJSON{
-			Nm:    380 + (i * 5),
-			Value: val.Val,
-		})
+	spectralData5nm := SpectralDataJSON{
+		Range: SpectralDataRangeJSON{
+			Type:    "5nm",
+			StartNm: 380,
+			EndNm:   780,
+			StepNm:  5,
+		},
+		Values: make([]float64, len(meas.SpectralData5nm)),
 	}
+	for i, val := range &meas.SpectralData5nm {
+		spectralData5nm.Values[i] = val.Val
+	}
+
+	res.SpectralData = []SpectralDataJSON{spectralData1nm, spectralData5nm}
 
 	return res
 }
