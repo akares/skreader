@@ -9,7 +9,7 @@ import "time"
 type MeasurementJSON struct {
 	Name             string                `json:"Name"`
 	Note             string                `json:"Note"`
-	UnixTime         int64                 `json:"unixtime"`
+	Timestamp        int64                 `json:"Timestamp"`
 	Illuminance      IlluminanceJSON       `json:"Illuminance"`
 	ColorTemperature ColorTemperatureJSON  `json:"ColorTemperature"`
 	Tristimulus      TristimulusJSON       `json:"Tristimulus"`
@@ -17,7 +17,7 @@ type MeasurementJSON struct {
 	CIE1976          CIE1976JSON           `json:"CIE1976"`
 	DWL              DWLJSON               `json:"DWL"`
 	CRI              CRIJSON               `json:"CRI"`
-	Wavelengths      []WavelengthGroupJSON `json:"wavelengths"`
+	WaveLengths      []WaveLengthGroupJSON `json:"WaveLengths"`
 }
 
 type IlluminanceJSON struct {
@@ -61,7 +61,7 @@ type CRIRiJSON struct {
 	Value float64 `json:"value"`
 }
 
-type WavelengthGroupJSON struct {
+type WaveLengthGroupJSON struct {
 	Type  string     `json:"type"`
 	Waves []WaveJSON `json:"waves"`
 }
@@ -73,9 +73,9 @@ type WaveJSON struct {
 
 func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime time.Time) MeasurementJSON {
 	res := MeasurementJSON{
-		Name:     measName,
-		Note:     measNote,
-		UnixTime: measTime.Unix(),
+		Name:      measName,
+		Note:      measNote,
+		Timestamp: measTime.Unix(),
 		Illuminance: IlluminanceJSON{
 			LUX: meas.Illuminance.Lux.Val,
 			Fc:  meas.Illuminance.FootCandle.Val,
@@ -105,7 +105,7 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 			RA: meas.ColorRenditionIndexes.Ra.Val,
 			Ri: []CRIRiJSON{},
 		},
-		Wavelengths: []WavelengthGroupJSON{
+		WaveLengths: []WaveLengthGroupJSON{
 			{Type: "1nm", Waves: []WaveJSON{}},
 			{Type: "5nm", Waves: []WaveJSON{}},
 		},
@@ -121,7 +121,7 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 
 	// Populate 1nm
 	for i, val := range &meas.SpectralData1nm {
-		res.Wavelengths[0].Waves = append(res.Wavelengths[0].Waves, WaveJSON{
+		res.WaveLengths[0].Waves = append(res.WaveLengths[0].Waves, WaveJSON{
 			Nm:    380 + i,
 			Value: val.Val,
 		})
@@ -129,7 +129,7 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 
 	// Populate 5nm
 	for i, val := range &meas.SpectralData5nm {
-		res.Wavelengths[1].Waves = append(res.Wavelengths[1].Waves, WaveJSON{
+		res.WaveLengths[1].Waves = append(res.WaveLengths[1].Waves, WaveJSON{
 			Nm:    380 + (i * 5),
 			Value: val.Val,
 		})

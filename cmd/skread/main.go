@@ -26,7 +26,7 @@ type JSONResponse struct {
 	Remote       string                     `json:"Remote"`
 	Button       string                     `json:"Button"`
 	Ring         string                     `json:"Ring"`
-	Measurements []skreader.MeasurementJSON `json:"measurements"`
+	Measurements []skreader.MeasurementJSON `json:"Measurements"`
 }
 
 func skConnect() (*skreader.Device, error) {
