@@ -7,6 +7,7 @@ import (
 	"github.com/akares/skreader"
 )
 
+//nolint:gocyclo
 func TestMeasurementJSON(t *testing.T) {
 	now := time.Now()
 
