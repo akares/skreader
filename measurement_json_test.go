@@ -88,8 +88,8 @@ func TestMeasurementJSON(t *testing.T) {
 			if mjs.CIE1976.Vd != m.CIE1976.Vd.Val {
 				t.Errorf("CIE1976.Vd = %v, want %v", mjs.CIE1976.Vd, m.CIE1976.Vd.Val)
 			}
-			if mjs.CRI.RA != m.ColorRenditionIndexes.Ra.Val {
-				t.Errorf("CRI.RA = %v, want %v", mjs.CRI.RA, m.ColorRenditionIndexes.Ra.Val)
+			if mjs.CRI.Ra != m.ColorRenditionIndexes.Ra.Val {
+				t.Errorf("CRI.RA = %v, want %v", mjs.CRI.Ra, m.ColorRenditionIndexes.Ra.Val)
 			}
 			if len(mjs.CRI.Ri) != len(m.ColorRenditionIndexes.Ri) {
 				t.Errorf("CRI.Ri = %v, want %v", mjs.CRI.Ri, m.ColorRenditionIndexes.Ri)

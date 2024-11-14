@@ -52,7 +52,7 @@ type DWLJSON struct {
 }
 
 type CRIJSON struct {
-	RA float64   `json:"RA"`
+	Ra float64   `json:"Ra"`
 	Ri []float64 `json:"Ri"`
 }
 
@@ -99,7 +99,7 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 			ExcitationPurity: meas.DWL.ExcitationPurity.Val,
 		},
 		CRI: CRIJSON{
-			RA: meas.ColorRenditionIndexes.Ra.Val,
+			Ra: meas.ColorRenditionIndexes.Ra.Val,
 			Ri: make([]float64, len(meas.ColorRenditionIndexes.Ri)), // populated later
 		},
 		SpectralData: []SpectralDataJSON{}, // populated later
