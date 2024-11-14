@@ -67,8 +67,8 @@ func TestMeasurementJSON(t *testing.T) {
 			if mjs.ColorTemperature.CCT != m.ColorTemperature.Tcp.Val {
 				t.Errorf("ColorTemperature.CCT = %v, want %v", mjs.ColorTemperature.CCT, m.ColorTemperature.Tcp.Val)
 			}
-			if mjs.ColorTemperature.CCTDeltaUV != m.ColorTemperature.DeltaUv.Val {
-				t.Errorf("ColorTemperature.CCTDeltaUV = %v, want %v", mjs.ColorTemperature.CCTDeltaUV, m.ColorTemperature.DeltaUv.Val)
+			if mjs.ColorTemperature.DeltaUv != m.ColorTemperature.DeltaUv.Val {
+				t.Errorf("ColorTemperature.DeltaUv = %v, want %v", mjs.ColorTemperature.DeltaUv, m.ColorTemperature.DeltaUv.Val)
 			}
 			if mjs.Illuminance.Fc != m.Illuminance.FootCandle.Val {
 				t.Errorf("Illuminance.Fc = %v, want %v", mjs.Illuminance.Fc, m.Illuminance.FootCandle.Val)
