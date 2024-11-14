@@ -52,13 +52,8 @@ type DWLJSON struct {
 }
 
 type CRIJSON struct {
-	RA float64     `json:"RA"`
-	Ri []CRIRiJSON `json:"Ri"`
-}
-
-type CRIRiJSON struct {
-	Ri    int     `json:"Ri"`
-	Value float64 `json:"value"`
+	RA float64   `json:"RA"`
+	Ri []float64 `json:"Ri"`
 }
 
 type SpectralDataJSON struct {
@@ -105,17 +100,14 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 		},
 		CRI: CRIJSON{
 			RA: meas.ColorRenditionIndexes.Ra.Val,
-			Ri: []CRIRiJSON{}, // populated later
+			Ri: make([]float64, len(meas.ColorRenditionIndexes.Ri)), // populated later
 		},
 		SpectralData: []SpectralDataJSON{}, // populated later
 	}
 
 	// Populate Ri
 	for i, val := range meas.ColorRenditionIndexes.Ri {
-		res.CRI.Ri = append(res.CRI.Ri, CRIRiJSON{
-			Ri:    i + 1,
-			Value: val.Val,
-		})
+		res.CRI.Ri[i] = val.Val
 	}
 
 	// Populate 1nm
