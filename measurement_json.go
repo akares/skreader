@@ -2,6 +2,8 @@ package skreader
 
 import "time"
 
+// TODO: Add tests
+
 // MeasurementJSON is a struct that represents a JSON object that can be used to
 // serialize a Measurement object.
 type MeasurementJSON struct {
