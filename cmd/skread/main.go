@@ -234,6 +234,9 @@ func makeJSON(c *cli.Context) error {
 
 	if c.Bool("fake-device") {
 		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return err
+		}
 		header = JSONHeader{
 			Device:       "fake-device",
 			Model:        "fake-device",
@@ -253,8 +256,12 @@ func makeJSON(c *cli.Context) error {
 		defer sk.Close()
 
 		meas, err = sk.Measure()
+		if err != nil {
+			return err
+		}
 
-		st, err := sk.State()
+		var st *skreader.DeviceState
+		st, err = sk.State()
 		if err != nil {
 			return err
 		}
@@ -272,15 +279,10 @@ func makeJSON(c *cli.Context) error {
 			Ring:         fmt.Sprintf("%v", st.Ring),
 			Measurements: []Measurement{},
 		}
-
-	}
-	if err != nil {
-		panic(err)
 	}
 
 	rawfile := JSONfile(header, meas, c)
 
-	// Convert struct to JSON
 	file, err := json.MarshalIndent(rawfile, "", "  ")
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
@@ -300,6 +302,9 @@ func measureCmd(c *cli.Context) error {
 
 	if c.Bool("fake-device") {
 		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return err
+		}
 	} else {
 		var sk *skreader.Device
 		sk, err = skConnect()
@@ -309,9 +314,9 @@ func measureCmd(c *cli.Context) error {
 		defer sk.Close()
 
 		meas, err = sk.Measure()
-	}
-	if err != nil {
-		panic(err)
+		if err != nil {
+			return err
+		}
 	}
 
 	verbose := c.Bool("verbose")
