@@ -14,84 +14,19 @@ import (
 
 const (
 	name        = "skreader"
-	version     = "0.2.0"
+	version     = "0.3.0"
 	description = "command line tool for SEKONIC spectrometers remote control"
 )
 
-type JSONHeader struct {
-	Device       string        `json:"Device"`
-	Model        string        `json:"Model"`
-	Firmware     string        `json:"Firmware"`
-	Status       string        `json:"Status"`
-	Remote       string        `json:"Remote"`
-	Button       string        `json:"Button"`
-	Ring         string        `json:"Ring"`
-	Measurements []Measurement `json:"measurements"`
-}
-
-type Measurement struct {
-	Name             string            `json:"Name"`
-	Unixtime         int64             `json:"unixtime"`
-	Note             string            `json:"Note"`
-	Illuminance      Illuminance       `json:"Illuminance"`
-	ColorTemperature ColorTemperature  `json:"ColorTemperature"`
-	Tristimulus      Tristimulus       `json:"Tristimulus"`
-	CIE1931          CIE1931           `json:"CIE1931"`
-	CIE1976          CIE1976           `json:"CIE1976"`
-	DWL              DWL               `json:"DWL"`
-	CRI              CRI               `json:"CRI"`
-	Wavelengths      []WavelengthGroup `json:"wavelengths"`
-}
-
-type Illuminance struct {
-	LUX float64 `json:"LUX"`
-	Fc  float64 `json:"Fc"`
-}
-
-type ColorTemperature struct {
-	CCT        float64 `json:"CCT"`
-	CCTDeltaUV float64 `json:"CCT DeltaUV"`
-}
-
-type Tristimulus struct {
-	X float64 `json:"X"`
-	Y float64 `json:"Y"`
-	Z float64 `json:"Z"`
-}
-
-type CIE1931 struct {
-	X float64 `json:"X"`
-	Y float64 `json:"Y"`
-}
-
-type CIE1976 struct {
-	Ud float64 `json:"Ud"`
-	Vd float64 `json:"Vd"`
-}
-
-type DWL struct {
-	Wavelength       float64 `json:"Wavelength"`
-	ExcitationPurity float64 `json:"ExcitationPurity"`
-}
-
-type CRI struct {
-	RA float64 `json:"RA"`
-	Ri []CRIRi `json:"Ri"`
-}
-
-type CRIRi struct {
-	Ri    int     `json:"Ri"`
-	Value float64 `json:"value"`
-}
-
-type WavelengthGroup struct {
-	Type  string `json:"type"`
-	Waves []Wave `json:"waves"`
-}
-
-type Wave struct {
-	Nm    int     `json:"Nm"`
-	Value float64 `json:"value"`
+type JSONResponse struct {
+	Device       string                     `json:"Device"`
+	Model        string                     `json:"Model"`
+	Firmware     string                     `json:"Firmware"`
+	Status       string                     `json:"Status"`
+	Remote       string                     `json:"Remote"`
+	Button       string                     `json:"Button"`
+	Ring         string                     `json:"Ring"`
+	Measurements []skreader.MeasurementJSON `json:"measurements"`
 }
 
 func skConnect() (*skreader.Device, error) {
@@ -135,117 +70,25 @@ func infoCmd(c *cli.Context) error {
 	return nil
 }
 
-func JSONfile(header JSONHeader, meas *skreader.Measurement, c *cli.Context) JSONHeader {
-	var data JSONHeader
-
-	currentTime := time.Now()
-	unixTime := currentTime.Unix()
-
-	data = JSONHeader{
-		Device:   header.Device,
-		Model:    header.Model,
-		Firmware: header.Firmware,
-		Status:   header.Status,
-		Remote:   header.Remote,
-		Button:   header.Button,
-		Ring:     header.Ring,
-		Measurements: []Measurement{
-			{
-				Name:     c.String("name"),
-				Unixtime: unixTime,
-				Note:     c.String("note"),
-
-				Illuminance: Illuminance{
-					LUX: meas.Illuminance.Lux.Val,
-					Fc:  meas.Illuminance.FootCandle.Val,
-				},
-
-				ColorTemperature: ColorTemperature{
-					CCT:        meas.ColorTemperature.Tcp.Val,
-					CCTDeltaUV: meas.ColorTemperature.DeltaUv.Val,
-				},
-
-				Tristimulus: Tristimulus{
-					X: meas.Tristimulus.X.Val,
-					Y: meas.Tristimulus.Y.Val,
-					Z: meas.Tristimulus.Z.Val,
-				},
-
-				CIE1931: CIE1931{
-					X: meas.CIE1931.X.Val,
-					Y: meas.CIE1931.Y.Val,
-				},
-
-				CIE1976: CIE1976{
-					Ud: meas.CIE1976.Ud.Val,
-					Vd: meas.CIE1976.Vd.Val,
-				},
-
-				DWL: DWL{
-					Wavelength:       meas.DWL.Wavelength.Val,
-					ExcitationPurity: meas.DWL.ExcitationPurity.Val,
-				},
-
-				CRI: CRI{
-					RA: meas.ColorRenditionIndexes.Ra.Val,
-					Ri: []CRIRi{},
-				},
-
-				Wavelengths: []WavelengthGroup{
-					{Type: "1nm", Waves: []Wave{}},
-					{Type: "5nm", Waves: []Wave{}},
-				},
-			},
-		},
-	}
-
-	// Populate Ri
-	for i, val := range meas.ColorRenditionIndexes.Ri {
-		data.Measurements[0].CRI.Ri = append(data.Measurements[0].CRI.Ri, CRIRi{
-			Ri:    i + 1,
-			Value: val.Val,
-		})
-	}
-
-	// Populate 1nm
-	for i, val := range &meas.SpectralData1nm {
-		data.Measurements[0].Wavelengths[0].Waves = append(data.Measurements[0].Wavelengths[0].Waves, Wave{
-			Nm:    380 + i,
-			Value: val.Val,
-		})
-	}
-
-	// Populate 5nm
-	for i, val := range &meas.SpectralData5nm {
-		data.Measurements[0].Wavelengths[1].Waves = append(data.Measurements[0].Wavelengths[1].Waves, Wave{
-			Nm:    380 + (i * 5),
-			Value: val.Val,
-		})
-	}
-
-	return data
-}
-
-func makeJSON(c *cli.Context) error {
+func jsonCmd(c *cli.Context) error {
 	var meas *skreader.Measurement
 	var err error
 
-	var header JSONHeader
-
+	var response JSONResponse
 	if c.Bool("fake-device") {
 		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
 		if err != nil {
 			return err
 		}
-		header = JSONHeader{
+		response = JSONResponse{
 			Device:       "fake-device",
-			Model:        "fake-device",
-			Firmware:     "fake-device",
-			Status:       "fake-device",
-			Remote:       "fake-device",
-			Button:       "fake-device",
-			Ring:         "fake-device",
-			Measurements: []Measurement{},
+			Model:        "n/a",
+			Firmware:     "n/a",
+			Status:       "n/a",
+			Remote:       "n/a",
+			Button:       "n/a",
+			Ring:         "n/a",
+			Measurements: []skreader.MeasurementJSON{}, // populated later
 		}
 	} else {
 		var sk *skreader.Device
@@ -269,7 +112,7 @@ func makeJSON(c *cli.Context) error {
 		model, _ := sk.ModelName()
 		fw, _ := sk.FirmwareVersion()
 
-		header = JSONHeader{
+		response = JSONResponse{
 			Device:       sk.String(),
 			Model:        model,
 			Firmware:     fmt.Sprintf("%v", fw),
@@ -277,13 +120,18 @@ func makeJSON(c *cli.Context) error {
 			Remote:       fmt.Sprintf("%v", st.Remote),
 			Button:       fmt.Sprintf("%v", st.Button),
 			Ring:         fmt.Sprintf("%v", st.Ring),
-			Measurements: []Measurement{},
+			Measurements: []skreader.MeasurementJSON{}, // populated later
 		}
 	}
 
-	rawfile := JSONfile(header, meas, c)
+	measName := c.String("name")
+	measNote := c.String("note")
+	measTime := time.Now()
 
-	file, err := json.MarshalIndent(rawfile, "", "  ")
+	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
+	response.Measurements = append(response.Measurements, measJSON)
+
+	file, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
 
@@ -453,9 +301,9 @@ func main() {
 				Action: infoCmd,
 			},
 			{
-				Name:   "JSON",
+				Name:   "json",
 				Usage:  "outputs all data as json",
-				Action: makeJSON,
+				Action: jsonCmd,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "name",
