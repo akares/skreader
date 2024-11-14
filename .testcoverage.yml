@@ -34,7 +34,6 @@ threshold:
 exclude:
   paths:
     - ^cmd
-    - measurement_json.go
 #     - \.pb\.go$ # excludes all protobuf generated files
 #     - ^pkg/bar # exclude package `pkg/bar`
 # NOTES:
