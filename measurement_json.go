@@ -26,8 +26,8 @@ type IlluminanceJSON struct {
 }
 
 type ColorTemperatureJSON struct {
-	CCT        float64 `json:"CCT"`
-	CCTDeltaUV float64 `json:"CCT DeltaUV"`
+	CCT     float64 `json:"CCT"`
+	DeltaUv float64 `json:"DeltaUv"`
 }
 
 type TristimulusJSON struct {
@@ -78,8 +78,8 @@ func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime t
 			Fc:  meas.Illuminance.FootCandle.Val,
 		},
 		ColorTemperature: ColorTemperatureJSON{
-			CCT:        meas.ColorTemperature.Tcp.Val,
-			CCTDeltaUV: meas.ColorTemperature.DeltaUv.Val,
+			CCT:     meas.ColorTemperature.Tcp.Val,
+			DeltaUv: meas.ColorTemperature.DeltaUv.Val,
 		},
 		Tristimulus: TristimulusJSON{
 			X: meas.Tristimulus.X.Val,
