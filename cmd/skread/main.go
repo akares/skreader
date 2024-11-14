@@ -284,6 +284,7 @@ func makeJSON(c *cli.Context) error {
 	file, err := json.MarshalIndent(rawfile, "", "  ")
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
+
 		return err
 	}
 
