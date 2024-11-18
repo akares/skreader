@@ -142,11 +142,16 @@ func webserverCmd(c *cli.Context) error {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note'>Measure</a></li>")
-		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note&fake=1'>Measure (fake device)</a></li>")
+		// Json
+		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note'>Measure Json</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note&fake=1'>Measure Json(fake device)</a></li>")
+		fmt.Fprint(w, "</br>")
+		// Spdx
+		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note'>Measure Spdx</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note&fake=1'>Measure Spdx(fake device)</a></li>")
 	})
 
-	mux.HandleFunc("/measure", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/measureJson", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 
 		isFakeDevice := query.Get("fake") == "1"
@@ -164,6 +169,34 @@ func webserverCmd(c *cli.Context) error {
 		enc.SetIndent("", "  ")
 		if err = enc.Encode(response); err != nil {
 			fmt.Println("Error encoding JSON:", err)
+		}
+	})
+
+	mux.HandleFunc("/measureSpdx", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		isFakeDevice := query.Get("fake") == "1"
+		measName := query.Get("name")
+		measNote := query.Get("note")
+
+		w.Header().Set("Content-Type", "application/xml")
+
+		response, err := measureAsSPDX(isFakeDevice, measName, measNote)
+		if err != nil {
+			fmt.Println("Measurement error:", err)
+			http.Error(w, "Measurement error", http.StatusInternalServerError)
+			return
+		}
+
+		xmlBytes, err := xml.MarshalIndent(response, "", "  ")
+		if err != nil {
+			fmt.Println("Error marshaling XML:", err)
+			http.Error(w, "Error marshaling XML", http.StatusInternalServerError)
+			return
+		}
+
+		if _, err = w.Write(xmlBytes); err != nil {
+			fmt.Println("Error writing response:", err)
 		}
 	})
 
