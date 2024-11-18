@@ -430,7 +430,6 @@ func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse,
 		if err != nil {
 			return nil, err
 		}
-		//response = SPDXResponse{}
 	} else {
 		var sk *skreader.Device
 		sk, err = skConnect()
@@ -444,7 +443,6 @@ func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse,
 			return nil, err
 		}
 
-		//response = SPDXResponse{}
 	}
 
 	var response SPDXResponse

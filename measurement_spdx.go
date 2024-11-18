@@ -2,7 +2,7 @@ package skreader
 
 import "time"
 
-// SPDX documentation
+// SPDX tm2714 documentation
 // https://colour.readthedocs.io/en/v0.3.10/_modules/colour/io/ies_tm2714.html
 
 // Online calculators
@@ -12,12 +12,11 @@ import "time"
 type SPDXHeader struct {
 	Description string `xml:"Description"`
 	Comments    string `xml:"Comments"`
-	Date        string `xml:"report_date"`
+	Date        string `xml:"Report_date"`
 }
 
 type SPDXWavelengths struct {
-	SpectralQuantity string
-	SpectralData     []SpectralData `xml:"SpectralData"`
+	SpectralData []SpectralData `xml:"SpectralData"`
 }
 
 type SpectralData struct {
@@ -39,10 +38,7 @@ func Header(measName, measNote string, measTime time.Time) SPDXHeader {
 
 func NewSpdxMeasurement(meas *Measurement) SPDXWavelengths {
 
-	wavelengths := SPDXWavelengths{
-		// relative or absolute
-		SpectralQuantity: "relative",
-	}
+	var wavelengths SPDXWavelengths
 
 	var spectra SpectralData
 
