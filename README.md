@@ -57,6 +57,8 @@ homebrew install go
 
 ### Run example measurement program usung Go
 
+#### Run as command line tool
+
 1. Connect your device.
 
 2. Run one measurement:
@@ -73,6 +75,33 @@ go run ./cmd/skread measure --help
 ```
 
 _Go will take care of dependencies when running this script for the first time._
+
+#### Run as HTTP server
+
+The example program can be also run as a web server:
+
+```
+go run ./cmd/skread webserver
+```
+
+By default it will start HTTP server on port 8080 and will be exposed to all network interfaces (i.e. **accesible to anybody from the LAN**):
+
+```
+🚀 HTTP server started at http://0.0.0.0:8080
+Press ctrl+c to stop.
+```
+
+Then you can access it via browser or curl:
+
+```
+curl "http://0.0.0.0:8080/measure?name=My%20Measuremente&note=Don't%20Panic"
+```
+
+To test it without connecting the device, you can use `fake` flag:
+
+```
+curl "http://0.0.0.0:8080/measure?fake=1"
+```
 
 ### Build standalone program executable (if needed)
 

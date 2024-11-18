@@ -1,21 +1,32 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"encoding/json"
+	"github.com/urfave/cli/v2"
 
 	"github.com/akares/skreader"
-	"github.com/urfave/cli/v2"
 )
 
 const (
 	name        = "skreader"
 	version     = "0.3.0"
 	description = "command line tool for SEKONIC spectrometers remote control"
+
+	webserverReadTimeout       = time.Duration(5) * time.Second
+	webserverWriteTimeout      = time.Duration(10) * time.Second
+	webserverIdleTimeout       = time.Duration(15) * time.Second
+	webserverReadHeaderTimeout = time.Duration(2) * time.Second
 )
 
 type JSONResponse struct {
@@ -38,6 +49,7 @@ func skConnect() (*skreader.Device, error) {
 	return sk, nil
 }
 
+// infoCmd shows info about the connected device.
 func infoCmd(c *cli.Context) error {
 	if c.Bool("fake-device") {
 		fmt.Println("Fake device")
@@ -70,66 +82,15 @@ func infoCmd(c *cli.Context) error {
 	return nil
 }
 
+// jsonCmd runs a measurement and outputs the result as JSON.
 func jsonCmd(c *cli.Context) error {
-	var meas *skreader.Measurement
-	var err error
-
-	var response JSONResponse
-	if c.Bool("fake-device") {
-		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
-		if err != nil {
-			return err
-		}
-		response = JSONResponse{
-			Device:       "fake-device",
-			Model:        "n/a",
-			Firmware:     "n/a",
-			Status:       "n/a",
-			Remote:       "n/a",
-			Button:       "n/a",
-			Ring:         "n/a",
-			Measurements: []skreader.MeasurementJSON{}, // populated later
-		}
-	} else {
-		var sk *skreader.Device
-		sk, err = skConnect()
-		if err != nil {
-			return err
-		}
-		defer sk.Close()
-
-		meas, err = sk.Measure()
-		if err != nil {
-			return err
-		}
-
-		var st *skreader.DeviceState
-		st, err = sk.State()
-		if err != nil {
-			return err
-		}
-
-		model, _ := sk.ModelName()
-		fw, _ := sk.FirmwareVersion()
-
-		response = JSONResponse{
-			Device:       sk.String(),
-			Model:        model,
-			Firmware:     fmt.Sprintf("%v", fw),
-			Status:       fmt.Sprintf("%v", st.Status),
-			Remote:       fmt.Sprintf("%v", st.Remote),
-			Button:       fmt.Sprintf("%v", st.Button),
-			Ring:         fmt.Sprintf("%v", st.Ring),
-			Measurements: []skreader.MeasurementJSON{}, // populated later
-		}
-	}
-
 	measName := c.String("name")
 	measNote := c.String("note")
-	measTime := time.Now()
 
-	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
-	response.Measurements = append(response.Measurements, measJSON)
+	response, err := measureAsJSON(c.Bool("fake-device"), measName, measNote)
+	if err != nil {
+		fmt.Println("Measurement error:", err)
+	}
 
 	file, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
@@ -143,6 +104,89 @@ func jsonCmd(c *cli.Context) error {
 	return nil
 }
 
+// webserverCmd starts a webserver that listens for HTTP requests.
+// The `/` endpoint shows a list of example endpoints.
+// The `/measure“ endpoint triggers a measurement and returns the result as JSON.
+// The `fake` query parameter can be used to trigger a measurement with a fake device response (for testing purpose).
+// The `name` and `note` query parameters prove the measurement name and note.
+func webserverCmd(c *cli.Context) error {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note'>Measure</a></li>")
+		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note&fake=1'>Measure (fake device)</a></li>")
+	})
+
+	mux.HandleFunc("/measure", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		isFakeDevice := query.Get("fake") == "1"
+		measName := query.Get("name")
+		measNote := query.Get("note")
+
+		w.Header().Set("Content-Type", "application/json")
+
+		response, err := measureAsJSON(isFakeDevice, measName, measNote)
+		if err != nil {
+			fmt.Println("Measurement error:", err)
+		}
+
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err = enc.Encode(response); err != nil {
+			fmt.Println("Error encoding JSON:", err)
+		}
+	})
+
+	srv := http.Server{ //nolint:exhaustruct
+		Addr:              c.String("address") + ":" + c.String("port"),
+		Handler:           mux,
+		ReadTimeout:       webserverReadTimeout,
+		WriteTimeout:      webserverWriteTimeout,
+		IdleTimeout:       webserverIdleTimeout,
+		ReadHeaderTimeout: webserverReadHeaderTimeout,
+	}
+
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		log.Fatal("HTTP server listen: ", err)
+	}
+
+	// Setup shutdown signal.
+	ctxWithCancel, cancel := context.WithCancel(context.Background())
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() { <-sig; cancel() }()
+
+	go func() {
+		if err = srv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("HTTP server serve: ", err)
+		}
+	}()
+
+	fmt.Printf("🚀 HTTP server started at http://%s\n", srv.Addr)
+	fmt.Println("Press ctrl+c to stop.")
+
+	// Wait for shutdown (ctrl-c).
+	<-ctxWithCancel.Done()
+
+	// Clean up.
+
+	fmt.Println("Shutting down...")
+
+	err = srv.Close()
+	if err != nil {
+		fmt.Println("HTTP server shutdown")
+	}
+
+	fmt.Println("👋 Bye.")
+
+	return nil
+}
+
+// measureCmd runs a measurement and outputs the selected data.
+//
 //nolint:gocyclo,funlen
 func measureCmd(c *cli.Context) error {
 	var meas *skreader.Measurement
@@ -285,6 +329,70 @@ func measureCmd(c *cli.Context) error {
 	return nil
 }
 
+// measureAsJSON runs a measurement and returns the result as JSON.
+// It is used by the `jsonCmd` and `webserverCmd` functions since they share the same functionality.
+func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse, error) {
+	var meas *skreader.Measurement
+	var err error
+
+	var response JSONResponse
+	if isFakeDevice {
+		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return nil, err
+		}
+		response = JSONResponse{
+			Device:       "fake-device",
+			Model:        "n/a",
+			Firmware:     "n/a",
+			Status:       "n/a",
+			Remote:       "n/a",
+			Button:       "n/a",
+			Ring:         "n/a",
+			Measurements: []skreader.MeasurementJSON{}, // populated later
+		}
+	} else {
+		var sk *skreader.Device
+		sk, err = skConnect()
+		if err != nil {
+			return nil, err
+		}
+		defer sk.Close()
+
+		meas, err = sk.Measure()
+		if err != nil {
+			return nil, err
+		}
+
+		var st *skreader.DeviceState
+		st, err = sk.State()
+		if err != nil {
+			return nil, err
+		}
+
+		model, _ := sk.ModelName()
+		fw, _ := sk.FirmwareVersion()
+
+		response = JSONResponse{
+			Device:       sk.String(),
+			Model:        model,
+			Firmware:     fmt.Sprintf("%v", fw),
+			Status:       fmt.Sprintf("%v", st.Status),
+			Remote:       fmt.Sprintf("%v", st.Remote),
+			Button:       fmt.Sprintf("%v", st.Button),
+			Ring:         fmt.Sprintf("%v", st.Ring),
+			Measurements: []skreader.MeasurementJSON{}, // populated later
+		}
+	}
+
+	measTime := time.Now()
+
+	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
+	response.Measurements = append(response.Measurements, measJSON)
+
+	return &response, nil
+}
+
 //nolint:exhaustruct,funlen
 func main() {
 	app := &cli.App{
@@ -297,12 +405,12 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:   "info",
-				Usage:  "Shows info about the connected device.",
+				Usage:  "Shows info about the connected device",
 				Action: infoCmd,
 			},
 			{
 				Name:   "json",
-				Usage:  "outputs all data as json",
+				Usage:  "Outputs all data as json",
 				Action: jsonCmd,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -321,7 +429,7 @@ func main() {
 			},
 			{
 				Name:   "measure",
-				Usage:  "Runs one measurement and outputs the selected data.",
+				Usage:  "Runs one measurement and outputs the selected data",
 				Action: measureCmd,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
@@ -388,6 +496,25 @@ func main() {
 						Name:    "verbose",
 						Aliases: []string{"v"},
 						Usage:   "print more messages",
+					},
+				},
+			},
+			{
+				Name:   "webserver",
+				Usage:  "Runs webserver for remote control via HTTP",
+				Action: webserverCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "address",
+						Aliases: []string{"a"},
+						Usage:   "bind address",
+						Value:   "0.0.0.0",
+					},
+					&cli.IntFlag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Usage:   "bind port",
+						Value:   8080,
 					},
 				},
 			},
