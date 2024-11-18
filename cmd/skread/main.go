@@ -106,9 +106,9 @@ func jsonCmd(c *cli.Context) error {
 
 // webserverCmd starts a webserver that listens for HTTP requests.
 // The `/` endpoint shows a list of example endpoints.
-// The `/measure“ endpoint triggers a measurement and returns the result as JSON.
+// The `/measure` endpoint triggers a measurement and returns the result as JSON.
 // The `fake` query parameter can be used to trigger a measurement with a fake device response (for testing purpose).
-// The `name` and `note` query parameters prove the measurement name and note.
+// The `name` and `note` query parameters set the measurement name and note fields.
 func webserverCmd(c *cli.Context) error {
 	mux := http.NewServeMux()
 
