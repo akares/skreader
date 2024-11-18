@@ -25,7 +25,6 @@ type SpectralData struct {
 }
 
 func Header(measName, measNote string, measTime time.Time) SPDXHeader {
-
 	formattedTime := measTime.Format("2006-01-02T15:04:05")
 
 	header := SPDXHeader{
@@ -33,18 +32,18 @@ func Header(measName, measNote string, measTime time.Time) SPDXHeader {
 		Comments:    measNote,
 		Date:        formattedTime,
 	}
+
 	return header
 }
 
 func NewSpdxMeasurement(meas *Measurement) SPDXWavelengths {
-
 	var wavelengths SPDXWavelengths
 
 	var spectra SpectralData
 
 	for i, val := range &meas.SpectralData1nm {
 		wl := float64(i) + 380
-		value := float64(val.Val)
+		value := val.Val
 
 		spectra = SpectralData{
 			Wavelength: wl,
