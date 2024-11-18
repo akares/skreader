@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"log"
@@ -38,6 +39,12 @@ type JSONResponse struct {
 	Button       string                     `json:"Button"`
 	Ring         string                     `json:"Ring"`
 	Measurements []skreader.MeasurementJSON `json:"Measurements"`
+}
+
+type SPDXResponse struct {
+	XMLName         xml.Name                   `xml:"IESTM2714"`
+	Header          []skreader.SPDXHeader      `xml:"Header"`
+	SPDXWavelengths []skreader.SPDXWavelengths `xml:"SpectralDistribution"`
 }
 
 func skConnect() (*skreader.Device, error) {
@@ -100,6 +107,27 @@ func jsonCmd(c *cli.Context) error {
 	}
 
 	fmt.Println(string(file))
+
+	return nil
+}
+
+// spdxCmd runs a measurement and outputs the result as SPDX.
+func spdxCmd(c *cli.Context) error {
+	measName := c.String("name")
+	measNote := c.String("note")
+
+	response, err := measureAsSPDX(c.Bool("fake-device"), measName, measNote)
+	if err != nil {
+		fmt.Println("Measurement error:", err)
+	}
+
+	xmlBytes, err := xml.MarshalIndent(response, "", "  ")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+
+	fmt.Println(string(xmlBytes))
 
 	return nil
 }
@@ -393,6 +421,48 @@ func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse,
 	return &response, nil
 }
 
+func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse, error) {
+	var meas *skreader.Measurement
+	var err error
+
+	if isFakeDevice {
+		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return nil, err
+		}
+		//response = SPDXResponse{}
+	} else {
+		var sk *skreader.Device
+		sk, err = skConnect()
+		if err != nil {
+			return nil, err
+		}
+		defer sk.Close()
+
+		meas, err = sk.Measure()
+		if err != nil {
+			return nil, err
+		}
+
+		//response = SPDXResponse{}
+	}
+
+	var response SPDXResponse
+
+	measTime := time.Now()
+
+	// Construct data
+	SpdxHeader := skreader.Header(measName, measNote, measTime)
+	spdxWave := skreader.NewSpdxMeasurement(meas)
+
+	// Construct response
+	response.Header = append(response.Header, SpdxHeader)
+	response.SPDXWavelengths = append(response.SPDXWavelengths, spdxWave)
+
+	return &response, nil
+
+}
+
 //nolint:exhaustruct,funlen
 func main() {
 	app := &cli.App{
@@ -407,6 +477,25 @@ func main() {
 				Name:   "info",
 				Usage:  "Shows info about the connected device",
 				Action: infoCmd,
+			},
+			{
+				Name:   "spdx",
+				Usage:  "Outputs all data as spdx",
+				Action: spdxCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"na"},
+						Usage:    "Measurement name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "note",
+						Aliases:  []string{"no"},
+						Usage:    "Measurement note",
+						Required: true,
+					},
+				},
 			},
 			{
 				Name:   "json",
