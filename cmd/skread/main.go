@@ -124,7 +124,6 @@ func spdxCmd(c *cli.Context) error {
 	xmlBytes, err := xml.MarshalIndent(response, "", "  ")
 	if err != nil {
 		fmt.Println("Error:", err)
-		return nil
 	}
 
 	fmt.Println(string(xmlBytes))
@@ -137,6 +136,8 @@ func spdxCmd(c *cli.Context) error {
 // The `/measure` endpoint triggers a measurement and returns the result as JSON.
 // The `fake` query parameter can be used to trigger a measurement with a fake device response (for testing purpose).
 // The `name` and `note` query parameters set the measurement name and note fields.
+//
+//nolint:funlen
 func webserverCmd(c *cli.Context) error {
 	mux := http.NewServeMux()
 
@@ -184,15 +185,11 @@ func webserverCmd(c *cli.Context) error {
 		response, err := measureAsSPDX(isFakeDevice, measName, measNote)
 		if err != nil {
 			fmt.Println("Measurement error:", err)
-			http.Error(w, "Measurement error", http.StatusInternalServerError)
-			return
 		}
 
 		xmlBytes, err := xml.MarshalIndent(response, "", "  ")
 		if err != nil {
 			fmt.Println("Error marshaling XML:", err)
-			http.Error(w, "Error marshaling XML", http.StatusInternalServerError)
-			return
 		}
 
 		if _, err = w.Write(xmlBytes); err != nil {
@@ -475,7 +472,6 @@ func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse,
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	var response SPDXResponse
@@ -491,7 +487,6 @@ func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse,
 	response.SPDXWavelengths = append(response.SPDXWavelengths, spdxWave)
 
 	return &response, nil
-
 }
 
 //nolint:exhaustruct,funlen
