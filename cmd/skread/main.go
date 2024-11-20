@@ -145,11 +145,11 @@ func webserverCmd(c *cli.Context) error {
 		w.Header().Set("Content-Type", "text/html")
 		// Json
 		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note'>Measure Json</a></li>")
-		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note&fake=1'>Measure Json(fake device)</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note&fake=1'>Measure Json (fake device)</a></li>")
 		fmt.Fprint(w, "</br>")
 		// Spdx
 		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note'>Measure Spdx</a></li>")
-		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note&fake=1'>Measure Spdx(fake device)</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note&fake=1'>Measure Spdx (fake device)</a></li>")
 	})
 
 	mux.HandleFunc("/measureJson", func(w http.ResponseWriter, r *http.Request) {
