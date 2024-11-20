@@ -37,16 +37,15 @@ func NewSPDXHeader(measName, measNote string, measTime time.Time) SPDXHeader {
 }
 
 func NewSPDXSpectralDistribution(meas *Measurement) SPDXSpectralDistribution {
-	var spectralDistribution SPDXSpectralDistribution
-
+	spectralData := make([]SPDXSpectralDataPoint, len(meas.SpectralData1nm))
 	for i, val := range &meas.SpectralData1nm {
-		dataPoint := SPDXSpectralDataPoint{
+		spectralData[i] = SPDXSpectralDataPoint{
 			Wavelength: float64(i) + 380,
 			Value:      val.Val,
 		}
-
-		spectralDistribution.SpectralData = append(spectralDistribution.SpectralData, dataPoint)
 	}
 
-	return spectralDistribution
+	return SPDXSpectralDistribution{
+		SpectralData: spectralData,
+	}
 }
