@@ -500,46 +500,8 @@ func main() {
 				Action: infoCmd,
 			},
 			{
-				Name:   "spdx",
-				Usage:  "Outputs all data as spdx",
-				Action: spdxCmd,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "name",
-						Aliases:  []string{"na"},
-						Usage:    "Measurement name",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "note",
-						Aliases:  []string{"no"},
-						Usage:    "Measurement note",
-						Required: true,
-					},
-				},
-			},
-			{
-				Name:   "json",
-				Usage:  "Outputs all data as json",
-				Action: jsonCmd,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "name",
-						Aliases:  []string{"na"},
-						Usage:    "Measurement name",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "note",
-						Aliases:  []string{"no"},
-						Usage:    "Measurement note",
-						Required: true,
-					},
-				},
-			},
-			{
 				Name:   "measure",
-				Usage:  "Runs one measurement and outputs the selected data",
+				Usage:  "Runs one measurement and outputs selected data as plain text",
 				Action: measureCmd,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
@@ -606,6 +568,44 @@ func main() {
 						Name:    "verbose",
 						Aliases: []string{"v"},
 						Usage:   "print more messages",
+					},
+				},
+			},
+			{
+				Name:   "json",
+				Usage:  "Runs one measurement and outputs data as JSON",
+				Action: jsonCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"na"},
+						Usage:    "Measurement name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "note",
+						Aliases:  []string{"no"},
+						Usage:    "Measurement note",
+						Required: true,
+					},
+				},
+			},
+			{
+				Name:   "spdx",
+				Usage:  "Runs one measurement and outputs data as SPDX",
+				Action: spdxCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"na"},
+						Usage:    "Measurement name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "note",
+						Aliases:  []string{"no"},
+						Usage:    "Measurement note",
+						Required: true,
 					},
 				},
 			},
