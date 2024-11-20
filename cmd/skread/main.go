@@ -42,9 +42,9 @@ type JSONResponse struct {
 }
 
 type SPDXResponse struct {
-	XMLName         xml.Name                   `xml:"IESTM2714"`
-	Header          []skreader.SPDXHeader      `xml:"Header"`
-	SPDXWavelengths []skreader.SPDXWavelengths `xml:"SpectralDistribution"`
+	XMLName              xml.Name                          `xml:"IESTM2714"`
+	Header               skreader.SPDXHeader               `xml:"Header"`
+	SpectralDistribution skreader.SPDXSpectralDistribution `xml:"SpectralDistribution"`
 }
 
 func skConnect() (*skreader.Device, error) {
@@ -478,13 +478,8 @@ func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse,
 
 	measTime := time.Now()
 
-	// Construct data
-	SpdxHeader := skreader.Header(measName, measNote, measTime)
-	spdxWave := skreader.NewSpdxMeasurement(meas)
-
-	// Construct response
-	response.Header = append(response.Header, SpdxHeader)
-	response.SPDXWavelengths = append(response.SPDXWavelengths, spdxWave)
+	response.Header = skreader.NewSPDXHeader(measName, measNote, measTime)
+	response.SpectralDistribution = skreader.NewSPDXSpectralDistribution(meas)
 
 	return &response, nil
 }

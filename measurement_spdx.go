@@ -15,16 +15,16 @@ type SPDXHeader struct {
 	Date        string `xml:"Report_date"`
 }
 
-type SPDXWavelengths struct {
-	SpectralData []SpectralData `xml:"SpectralData"`
-}
-
-type SpectralData struct {
+type SPDXSpectralDataPoint struct {
 	Wavelength float64 `xml:"wavelength,attr"`
 	Value      float64 `xml:",chardata"`
 }
 
-func Header(measName, measNote string, measTime time.Time) SPDXHeader {
+type SPDXSpectralDistribution struct {
+	SpectralData []SPDXSpectralDataPoint `xml:"SpectralData"`
+}
+
+func NewSPDXHeader(measName, measNote string, measTime time.Time) SPDXHeader {
 	formattedTime := measTime.Format("2006-01-02T15:04:05")
 
 	header := SPDXHeader{
@@ -36,22 +36,17 @@ func Header(measName, measNote string, measTime time.Time) SPDXHeader {
 	return header
 }
 
-func NewSpdxMeasurement(meas *Measurement) SPDXWavelengths {
-	var wavelengths SPDXWavelengths
-
-	var spectra SpectralData
+func NewSPDXSpectralDistribution(meas *Measurement) SPDXSpectralDistribution {
+	var spectralDistribution SPDXSpectralDistribution
 
 	for i, val := range &meas.SpectralData1nm {
-		wl := float64(i) + 380
-		value := val.Val
-
-		spectra = SpectralData{
-			Wavelength: wl,
-			Value:      value,
+		dataPoint := SPDXSpectralDataPoint{
+			Wavelength: float64(i) + 380,
+			Value:      val.Val,
 		}
 
-		wavelengths.SpectralData = append(wavelengths.SpectralData, spectra)
+		spectralDistribution.SpectralData = append(spectralDistribution.SpectralData, dataPoint)
 	}
 
-	return wavelengths
+	return spectralDistribution
 }
