@@ -21,7 +21,7 @@ import (
 
 const (
 	name        = "skreader"
-	version     = "0.3.0"
+	version     = "0.4.0"
 	description = "command line tool for SEKONIC spectrometers remote control"
 
 	webserverReadTimeout       = time.Duration(5) * time.Second
