@@ -68,7 +68,7 @@ type SpectralDataRangeJSON struct {
 	StepNm  int    `json:"StepNm"`
 }
 
-func NewFromMeasurement(meas *Measurement, measName, measNote string, measTime time.Time) MeasurementJSON {
+func NewJSONMeasurement(meas *Measurement, measName, measNote string, measTime time.Time) MeasurementJSON {
 	res := MeasurementJSON{
 		Name:      measName,
 		Note:      measNote,

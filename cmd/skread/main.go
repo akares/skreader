@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"log"
@@ -38,6 +39,12 @@ type JSONResponse struct {
 	Button       string                     `json:"Button"`
 	Ring         string                     `json:"Ring"`
 	Measurements []skreader.MeasurementJSON `json:"Measurements"`
+}
+
+type SPDXResponse struct {
+	XMLName              xml.Name                          `xml:"IESTM2714"`
+	Header               skreader.SPDXHeader               `xml:"Header"`
+	SpectralDistribution skreader.SPDXSpectralDistribution `xml:"SpectralDistribution"`
 }
 
 func skConnect() (*skreader.Device, error) {
@@ -104,21 +111,48 @@ func jsonCmd(c *cli.Context) error {
 	return nil
 }
 
+// spdxCmd runs a measurement and outputs the result as SPDX.
+func spdxCmd(c *cli.Context) error {
+	measName := c.String("name")
+	measNote := c.String("note")
+
+	response, err := measureAsSPDX(c.Bool("fake-device"), measName, measNote)
+	if err != nil {
+		fmt.Println("Measurement error:", err)
+	}
+
+	xmlBytes, err := xml.MarshalIndent(response, "", "  ")
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	fmt.Println(string(xmlBytes))
+
+	return nil
+}
+
 // webserverCmd starts a webserver that listens for HTTP requests.
 // The `/` endpoint shows a list of example endpoints.
 // The `/measure` endpoint triggers a measurement and returns the result as JSON.
 // The `fake` query parameter can be used to trigger a measurement with a fake device response (for testing purpose).
 // The `name` and `note` query parameters set the measurement name and note fields.
+//
+//nolint:funlen
 func webserverCmd(c *cli.Context) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note'>Measure</a></li>")
-		fmt.Fprint(w, "<li><a href='/measure?name=The Name&note=The Note&fake=1'>Measure (fake device)</a></li>")
+		// Json
+		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note'>Measure Json</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureJson?name=The Name&note=The Note&fake=1'>Measure Json (fake device)</a></li>")
+		fmt.Fprint(w, "</br>")
+		// Spdx
+		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note'>Measure Spdx</a></li>")
+		fmt.Fprint(w, "<li><a href='/measureSpdx?name=The Name&note=The Note&fake=1'>Measure Spdx (fake device)</a></li>")
 	})
 
-	mux.HandleFunc("/measure", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/measureJson", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 
 		isFakeDevice := query.Get("fake") == "1"
@@ -136,6 +170,30 @@ func webserverCmd(c *cli.Context) error {
 		enc.SetIndent("", "  ")
 		if err = enc.Encode(response); err != nil {
 			fmt.Println("Error encoding JSON:", err)
+		}
+	})
+
+	mux.HandleFunc("/measureSpdx", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+
+		isFakeDevice := query.Get("fake") == "1"
+		measName := query.Get("name")
+		measNote := query.Get("note")
+
+		w.Header().Set("Content-Type", "application/xml")
+
+		response, err := measureAsSPDX(isFakeDevice, measName, measNote)
+		if err != nil {
+			fmt.Println("Measurement error:", err)
+		}
+
+		xmlBytes, err := xml.MarshalIndent(response, "", "  ")
+		if err != nil {
+			fmt.Println("Error marshaling XML:", err)
+		}
+
+		if _, err = w.Write(xmlBytes); err != nil {
+			fmt.Println("Error writing response:", err)
 		}
 	})
 
@@ -387,8 +445,41 @@ func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse,
 
 	measTime := time.Now()
 
-	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
+	measJSON := skreader.NewJSONMeasurement(meas, measName, measNote, measTime)
 	response.Measurements = append(response.Measurements, measJSON)
+
+	return &response, nil
+}
+
+func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse, error) {
+	var meas *skreader.Measurement
+	var err error
+
+	if isFakeDevice {
+		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var sk *skreader.Device
+		sk, err = skConnect()
+		if err != nil {
+			return nil, err
+		}
+		defer sk.Close()
+
+		meas, err = sk.Measure()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var response SPDXResponse
+
+	measTime := time.Now()
+
+	response.Header = skreader.NewSPDXHeader(measName, measNote, measTime)
+	response.SpectralDistribution = skreader.NewSPDXSpectralDistribution(meas)
 
 	return &response, nil
 }
@@ -407,6 +498,25 @@ func main() {
 				Name:   "info",
 				Usage:  "Shows info about the connected device",
 				Action: infoCmd,
+			},
+			{
+				Name:   "spdx",
+				Usage:  "Outputs all data as spdx",
+				Action: spdxCmd,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "name",
+						Aliases:  []string{"na"},
+						Usage:    "Measurement name",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "note",
+						Aliases:  []string{"no"},
+						Usage:    "Measurement note",
+						Required: true,
+					},
+				},
 			},
 			{
 				Name:   "json",

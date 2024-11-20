@@ -42,11 +42,7 @@ func TestMeasurementJSON(t *testing.T) {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			// Test the NewFromMeasurement function
-
-			mjs := skreader.NewFromMeasurement(m, tt.measName, tt.measNote, now)
-
-			// Test the values correspond to the original object
+			mjs := skreader.NewJSONMeasurement(m, tt.measName, tt.measNote, now)
 
 			if mjs.Name != tt.measName {
 				t.Errorf("Name = %v, want %v", mjs.Name, tt.measName)
