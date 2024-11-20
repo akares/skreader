@@ -445,7 +445,7 @@ func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse,
 
 	measTime := time.Now()
 
-	measJSON := skreader.NewFromMeasurement(meas, measName, measNote, measTime)
+	measJSON := skreader.NewJSONMeasurement(meas, measName, measNote, measTime)
 	response.Measurements = append(response.Measurements, measJSON)
 
 	return &response, nil
