@@ -125,6 +125,16 @@ func NewMeasurementFromBytes(data []byte) (*Measurement, error) {
 		return nil, fmt.Errorf("invalid measurement data size: %d < %d bytes", len(data), MeasurementDataValidSize)
 	}
 
+	// TODO(kinglevel): Remove this when data is collected
+	fmt.Print("var TestdataCHANGEME = []byte{")
+	for i := 0; i < len(data); i++ {
+		fmt.Printf("%d", data[i])
+		if i < len(data)-1 {
+			fmt.Printf(", ")
+		}
+	}
+	fmt.Println("}")
+
 	// Parse binary data to struct.
 	//
 	// Data offsets and sizes are based on SEKONIC USB data packet layout which
