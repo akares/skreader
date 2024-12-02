@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -94,7 +95,7 @@ func jsonCmd(c *cli.Context) error {
 	measName := c.String("name")
 	measNote := c.String("note")
 
-	response, err := measureAsJSON(c.Bool("fake-device"), measName, measNote)
+	response, err := measureAsJSON(c.Bool("fake-device"), c.Int("fake-data"), measName, measNote)
 	if err != nil {
 		fmt.Println("Measurement error:", err)
 	}
@@ -116,7 +117,7 @@ func spdxCmd(c *cli.Context) error {
 	measName := c.String("name")
 	measNote := c.String("note")
 
-	response, err := measureAsSPDX(c.Bool("fake-device"), measName, measNote)
+	response, err := measureAsSPDX(c.Bool("fake-device"), c.Int("fake-data"), measName, measNote)
 	if err != nil {
 		fmt.Println("Measurement error:", err)
 	}
@@ -155,13 +156,18 @@ func webserverCmd(c *cli.Context) error {
 	mux.HandleFunc("/measureJson", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 
-		isFakeDevice := query.Get("fake") == "1"
 		measName := query.Get("name")
 		measNote := query.Get("note")
 
+		fakeDataIdx, err := strconv.Atoi(query.Get("fake"))
+		if err != nil {
+			fmt.Println("Error converting fake data index:", err)
+		}
+		isFakeDevice := fakeDataIdx > 0
+
 		w.Header().Set("Content-Type", "application/json")
 
-		response, err := measureAsJSON(isFakeDevice, measName, measNote)
+		response, err := measureAsJSON(isFakeDevice, fakeDataIdx, measName, measNote)
 		if err != nil {
 			fmt.Println("Measurement error:", err)
 		}
@@ -176,13 +182,18 @@ func webserverCmd(c *cli.Context) error {
 	mux.HandleFunc("/measureSpdx", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 
-		isFakeDevice := query.Get("fake") == "1"
 		measName := query.Get("name")
 		measNote := query.Get("note")
 
+		fakeDataIdx, err := strconv.Atoi(query.Get("fake"))
+		if err != nil {
+			fmt.Println("Error converting fake data index:", err)
+		}
+		isFakeDevice := fakeDataIdx > 0
+
 		w.Header().Set("Content-Type", "application/xml")
 
-		response, err := measureAsSPDX(isFakeDevice, measName, measNote)
+		response, err := measureAsSPDX(isFakeDevice, fakeDataIdx, measName, measNote)
 		if err != nil {
 			fmt.Println("Measurement error:", err)
 		}
@@ -251,7 +262,7 @@ func measureCmd(c *cli.Context) error {
 	var err error
 
 	if c.Bool("fake-device") {
-		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		meas, err = skreader.NewMeasurementFromBytes(getFakeDataByIdx(c.Int("fake-data")))
 		if err != nil {
 			return err
 		}
@@ -389,13 +400,13 @@ func measureCmd(c *cli.Context) error {
 
 // measureAsJSON runs a measurement and returns the result as JSON.
 // It is used by the `jsonCmd` and `webserverCmd` functions since they share the same functionality.
-func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse, error) {
+func measureAsJSON(isFakeDevice bool, fakeDataIdx int, measName, measNote string) (*JSONResponse, error) {
 	var meas *skreader.Measurement
 	var err error
 
 	var response JSONResponse
 	if isFakeDevice {
-		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		meas, err = skreader.NewMeasurementFromBytes(getFakeDataByIdx(fakeDataIdx))
 		if err != nil {
 			return nil, err
 		}
@@ -451,12 +462,12 @@ func measureAsJSON(isFakeDevice bool, measName, measNote string) (*JSONResponse,
 	return &response, nil
 }
 
-func measureAsSPDX(isFakeDevice bool, measName, measNote string) (*SPDXResponse, error) {
+func measureAsSPDX(isFakeDevice bool, fakeDataIdx int, measName, measNote string) (*SPDXResponse, error) {
 	var meas *skreader.Measurement
 	var err error
 
 	if isFakeDevice {
-		meas, err = skreader.NewMeasurementFromBytes(skreader.Testdata)
+		meas, err = skreader.NewMeasurementFromBytes(getFakeDataByIdx(fakeDataIdx))
 		if err != nil {
 			return nil, err
 		}
@@ -635,6 +646,12 @@ func main() {
 				Aliases: []string{"fake", "f"},
 				Usage:   "use fake device for testing",
 			},
+			&cli.IntFlag{
+				Name:    "fake-data",
+				Aliases: []string{"d"},
+				Usage:   "fake data to use (1=sun, 2=flurescent light, 3=tungsten, 4=led something, 5=over, 6=under, 7=…)",
+				Value:   1,
+			},
 		},
 	}
 
@@ -646,5 +663,25 @@ func main() {
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func getFakeDataByIdx(idx int) []byte {
+	//nolint:gomnd
+	switch idx {
+	case 1:
+		return skreader.TestdataSun
+	case 2:
+		return skreader.TestdataFluorescentLight
+	case 3:
+		return skreader.TestdataTungsten
+	case 4:
+		return skreader.TestdataLedSomething
+	case 5:
+		return skreader.TestdataOver
+	case 6:
+		return skreader.TestdataUnder
+	default:
+		return skreader.TestdataSun
 	}
 }
